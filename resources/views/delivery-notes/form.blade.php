@@ -123,6 +123,7 @@
                         <select id="dn_product_search" class="form-control"></select>
                     </div>
                 </div>
+                <div class="table-responsive">
                 <table class="table table-bordered items-table" id="dn_items">
                     <thead>
                     <tr>
@@ -135,6 +136,7 @@
                     </thead>
                     <tbody></tbody>
                 </table>
+                </div>
                 <div class="form-group mb-0 mt-3">
                     <label for="notes">Notes</label>
                     <textarea name="notes" id="notes" rows="2" class="form-control">{{ old('notes', $note->notes) }}</textarea>

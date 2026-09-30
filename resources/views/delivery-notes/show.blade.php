@@ -20,9 +20,11 @@
         @endif
         <a href="{{ route('delivery-notes.edit', $note) }}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> Edit</a>
     @endcan
+    @if (! $note->from_sale)
     @can('delivery_notes.delete')
         <a href="#" class="btn btn-sm btn-outline-danger btn-delete" data-href="{{ route('delivery-notes.destroy', $note) }}" data-redirect="{{ route('delivery-notes.index') }}"><i class="fas fa-trash-alt"></i></a>
     @endcan
+    @endif
 @endsection
 
 @section('content')

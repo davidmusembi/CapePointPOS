@@ -41,7 +41,7 @@ class ExpenseController extends Controller implements HasMiddleware
                 ]))
                 ->filterColumn('category_name', fn ($q, $k) => $q->whereHas('category', fn ($c) => $c->where('name', 'like', "%{$k}%")))
                 ->with('totals', $totals)
-                ->rawColumns(['action'])
+                ->rawColumns(['action', 'category_name', 'payment_method', 'notes', 'added_by'])
                 ->make(true);
         }
 

@@ -20,7 +20,7 @@ class CategoryController extends Controller
                     ['label' => 'Delete', 'delete' => route('categories.destroy', $c)],
                 ]))
                 ->editColumn('description', fn ($c) => e(\Illuminate\Support\Str::limit($c->description, 80)))
-                ->rawColumns(['action'])
+                ->rawColumns(['action', 'description'])
                 ->make(true);
         }
 

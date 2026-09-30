@@ -42,7 +42,7 @@ class StockAdjustmentController extends Controller implements HasMiddleware
                     ['label' => 'Delete', 'delete' => route('stock-adjustments.destroy', $a), 'can' => 'stock_adjustments.delete', 'message' => 'The stock movement will be reversed.'],
                 ]))
                 ->with('totals', $totals)
-                ->rawColumns(['reference_no', 'type', 'action'])
+                ->rawColumns(['reference_no', 'type', 'action', 'added_by'])
                 ->make(true);
         }
 

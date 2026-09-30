@@ -37,17 +37,17 @@ class ReportController extends Controller
 
         if ($request->ajax()) {
             $p = Purchase::whereBetween('date', [$start, $end])->toBase()
-                ->selectRaw('COUNT(*) cnt, COALESCE(SUM(subtotal - discount_amount),0) excl, COALESCE(SUM(total),0) incl, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(due_amount),0) due')->first();
+                ->selectRaw('COUNT(*) cnt, COALESCE(SUM(subtotal - discount_amount),0) excl, COALESCE(SUM(total),0) incl, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(shipping_charges + additional_charges_total),0) charges, COALESCE(SUM(due_amount),0) due')->first();
             $s = Sale::whereBetween('date', [$start, $end])->toBase()
-                ->selectRaw('COUNT(*) cnt, COALESCE(SUM(subtotal - discount_amount),0) excl, COALESCE(SUM(total),0) incl, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(due_amount),0) due')->first();
+                ->selectRaw('COUNT(*) cnt, COALESCE(SUM(subtotal - discount_amount),0) excl, COALESCE(SUM(total),0) incl, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(shipping_charges + additional_charges_total),0) charges, COALESCE(SUM(due_amount),0) due')->first();
             $pr = (float) PurchaseReturn::whereBetween('date', [$start, $end])->sum('total');
             $sr = (float) SaleReturn::whereBetween('date', [$start, $end])->sum('total');
 
             return response()->json(['totals' => $this->num([
                 'purchase_count' => $p->cnt, 'purchase_excl' => $p->excl, 'purchase_incl' => $p->incl,
-                'purchase_tax' => $p->tax, 'purchase_return' => $pr, 'purchase_due' => $p->due,
+                'purchase_tax' => $p->tax, 'purchase_charges' => $p->charges, 'purchase_return' => $pr, 'purchase_due' => $p->due,
                 'sale_count' => $s->cnt, 'sale_excl' => $s->excl, 'sale_incl' => $s->incl,
-                'sale_tax' => $s->tax, 'sale_return' => $sr, 'sale_due' => $s->due,
+                'sale_tax' => $s->tax, 'sale_charges' => $s->charges, 'sale_return' => $sr, 'sale_due' => $s->due,
                 'overall' => ($s->incl - $sr) - ($p->incl - $pr),
                 'overall_due' => $s->due - $p->due,
             ])]);
@@ -94,33 +94,34 @@ class ReportController extends Controller
 
             if ($request->section === 'daily') {
                 $rows = $filter(Sale::query())->toBase()->groupBy('date')
-                    ->selectRaw('date, COUNT(*) cnt, SUM(subtotal - discount_amount) net, SUM(tax_amount) tax, SUM(total) total, SUM(paid_amount) paid, SUM(due_amount) due')
+                    ->selectRaw('date, COUNT(*) cnt, SUM(subtotal - discount_amount) net, SUM(tax_amount) tax, SUM(shipping_charges + additional_charges_total) charges, SUM(total) total, SUM(paid_amount) paid, SUM(due_amount) due')
                     ->orderBy('date')->get()
                     ->map(fn ($r) => [
                         'date' => ['display' => format_date($r->date), 'sort' => $r->date],
-                        'count' => (int) $r->cnt, 'net' => (float) $r->net, 'tax' => (float) $r->tax,
+                        'count' => (int) $r->cnt, 'net' => (float) $r->net, 'tax' => (float) $r->tax, 'charges' => (float) $r->charges,
                         'total' => (float) $r->total, 'paid' => (float) $r->paid, 'due' => (float) $r->due,
                     ]);
 
                 return $this->json($rows, [
-                    'd_count' => $rows->sum('count'), 'd_net' => $rows->sum('net'), 'd_tax' => $rows->sum('tax'),
+                    'd_count' => $rows->sum('count'), 'd_net' => $rows->sum('net'), 'd_tax' => $rows->sum('tax'), 'd_charges' => $rows->sum('charges'),
                     'd_total' => $rows->sum('total'), 'd_paid' => $rows->sum('paid'), 'd_due' => $rows->sum('due'),
                 ]);
             }
 
             $base = $filter(Sale::query());
             $totals = (clone $base)->toBase()->selectRaw('COUNT(*) count, COALESCE(SUM(subtotal),0) subtotal, COALESCE(SUM(discount_amount),0) discount,
-                COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(total),0) total, COALESCE(SUM(paid_amount),0) paid,
+                COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(shipping_charges + additional_charges_total),0) charges, COALESCE(SUM(total),0) total, COALESCE(SUM(paid_amount),0) paid,
                 COALESCE(SUM(returned_amount),0) returned, COALESCE(SUM(due_amount),0) due')->first();
 
             return DataTables::eloquent($base->with('customer'))
                 ->editColumn('date', fn ($s) => format_date($s->date))
                 ->editColumn('invoice_no', fn ($s) => '<a href="'.route('sales.show', $s->id).'">'.e($s->invoice_no).'</a>')
                 ->addColumn('customer_name', fn ($s) => e($s->customer->display_name ?? '-'))
+                ->addColumn('charges', fn ($s) => $s->charges_total)
                 ->filterColumn('customer_name', fn ($q, $k) => $this->whereContact($q, 'customer', $k))
                 ->editColumn('payment_status', fn ($s) => payment_status_badge($s->payment_status))
                 ->with('totals', $this->num((array) $totals))
-                ->rawColumns(['invoice_no', 'payment_status'])
+                ->rawColumns(['invoice_no', 'payment_status', 'customer_name'])
                 ->make(true);
         }
 
@@ -174,11 +175,12 @@ class ReportController extends Controller
                 ->editColumn('due_date', fn ($s) => format_date($s->due_date))
                 ->editColumn('invoice_no', fn ($s) => '<a href="'.route('sales.show', $s->id).'">'.e($s->invoice_no).'</a>')
                 ->addColumn('customer_name', fn ($s) => e($s->customer->display_name ?? '-'))
+                ->addColumn('charges', fn ($s) => $s->charges_total)
                 ->filterColumn('customer_name', fn ($q, $k) => $this->whereContact($q, 'customer', $k))
                 ->addColumn('days_overdue', fn ($s) => $this->overdueBadge($s->due_date))
                 ->editColumn('payment_status', fn ($s) => payment_status_badge($s->payment_status))
                 ->with('totals', $this->num((array) $totals))
-                ->rawColumns(['invoice_no', 'days_overdue', 'payment_status'])
+                ->rawColumns(['invoice_no', 'days_overdue', 'payment_status', 'customer_name'])
                 ->make(true);
         }
 
@@ -286,7 +288,7 @@ class ReportController extends Controller
                 ->addColumn('customer_name', fn ($r) => e($r->customer->display_name ?? '-'))
                 ->filterColumn('customer_name', fn ($q, $k) => $this->whereContact($q, 'customer', $k))
                 ->with('totals', $this->num((array) $totals))
-                ->rawColumns(['return_no', 'invoice_no'])
+                ->rawColumns(['return_no', 'invoice_no', 'customer_name'])
                 ->make(true);
         }
 
@@ -329,17 +331,18 @@ class ReportController extends Controller
 
             $base = $filter(Purchase::query());
             $totals = (clone $base)->toBase()->selectRaw('COUNT(*) count, COALESCE(SUM(subtotal),0) subtotal, COALESCE(SUM(discount_amount),0) discount,
-                COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(total),0) total, COALESCE(SUM(paid_amount),0) paid,
+                COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(shipping_charges + additional_charges_total),0) charges, COALESCE(SUM(total),0) total, COALESCE(SUM(paid_amount),0) paid,
                 COALESCE(SUM(returned_amount),0) returned, COALESCE(SUM(due_amount),0) due')->first();
 
             return DataTables::eloquent($base->with('supplier'))
                 ->editColumn('date', fn ($p) => format_date($p->date))
                 ->editColumn('purchase_no', fn ($p) => '<a href="'.route('purchases.show', $p->id).'">'.e($p->purchase_no).'</a>')
                 ->addColumn('supplier_name', fn ($p) => e($p->supplier->display_name ?? '-'))
+                ->addColumn('charges', fn ($p) => $p->charges_total)
                 ->filterColumn('supplier_name', fn ($q, $k) => $this->whereContact($q, 'supplier', $k))
                 ->editColumn('payment_status', fn ($p) => payment_status_badge($p->payment_status))
                 ->with('totals', $this->num((array) $totals))
-                ->rawColumns(['purchase_no', 'payment_status'])
+                ->rawColumns(['purchase_no', 'payment_status', 'supplier_name'])
                 ->make(true);
         }
 
@@ -382,7 +385,7 @@ class ReportController extends Controller
                 ->addColumn('supplier_name', fn ($r) => e($r->supplier->display_name ?? '-'))
                 ->filterColumn('supplier_name', fn ($q, $k) => $this->whereContact($q, 'supplier', $k))
                 ->with('totals', $this->num((array) $totals))
-                ->rawColumns(['return_no', 'purchase_no'])
+                ->rawColumns(['return_no', 'purchase_no', 'supplier_name'])
                 ->make(true);
         }
 
@@ -444,7 +447,7 @@ class ReportController extends Controller
                 ->filterColumn('supplier_name', fn ($q, $k) => $this->whereContact($q, 'supplier', $k))
                 ->addColumn('days_overdue', fn ($p) => $this->overdueBadge($p->due_date))
                 ->with('totals', $this->num((array) $totals))
-                ->rawColumns(['purchase_no', 'days_overdue'])
+                ->rawColumns(['purchase_no', 'days_overdue', 'supplier_name'])
                 ->make(true);
         }
 
@@ -495,6 +498,7 @@ class ReportController extends Controller
                 ->filterColumn('category_name', fn ($q, $k) => $q->whereHas('category', fn ($c) => $c->where('name', 'like', "%{$k}%")))
                 ->editColumn('payment_method', fn ($x) => e(payment_method_label($x->payment_method)))
                 ->with('totals', $this->num((array) $totals))
+                ->rawColumns(['category_name', 'payment_method'])
                 ->make(true);
         }
 
@@ -562,7 +566,7 @@ class ReportController extends Controller
                     ? '<span class="badge badge-danger">Out of stock</span>'
                     : ($p->is_low_stock ? '<span class="badge badge-warning">Low stock</span>' : '<span class="badge badge-success">In stock</span>'))
                 ->with('totals', $this->num((array) $totals))
-                ->rawColumns(['name', 'status'])
+                ->rawColumns(['name', 'status', 'category_name', 'unit_name'])
                 ->make(true);
         }
 

@@ -29,6 +29,18 @@
                 </select>
             </div>
         </div>
+        <div class="col-md-3">
+            <div class="form-group">
+                <label>Shipping status</label>
+                <select name="shipping_status" class="form-control custom-select">
+                    <option value="">All</option>
+                    @foreach (shipping_statuses() as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                    <option value="none">No shipping</option>
+                </select>
+            </div>
+        </div>
     </x-filters>
 
     <div class="row">
@@ -54,6 +66,7 @@
                     <th>Returned</th>
                     <th>Due</th>
                     <th>Payment</th>
+                    <th>Shipping</th>
                     <th>Added By</th>
                     <th class="no-export">Action</th>
                 </tr>
@@ -65,7 +78,7 @@
                     <th class="text-right" data-total="paid"></th>
                     <th class="text-right" data-total="returned"></th>
                     <th class="text-right" data-total="due"></th>
-                    <th colspan="3"></th>
+                    <th colspan="4"></th>
                 </tr>
                 </tfoot>
             </table>
@@ -92,6 +105,7 @@
                 { data: 'returned_amount', name: 'returned_amount', className: 'text-right', searchable: false },
                 { data: 'due_amount', name: 'due_amount', className: 'text-right', searchable: false },
                 { data: 'payment_status', name: 'payment_status' },
+                { data: 'shipping_status', name: 'shipping_status', className: 'text-center', searchable: false },
                 { data: 'added_by', name: 'added_by', orderable: false, searchable: false },
                 { data: 'action', name: 'action', orderable: false, searchable: false }
             ],

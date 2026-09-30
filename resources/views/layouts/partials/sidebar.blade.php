@@ -13,7 +13,6 @@
             ['label' => 'Sales Due', 'route' => 'sales.due', 'can' => 'sales.view'],
         ]],
         ['label' => 'Sales Returns', 'icon' => 'fas fa-undo-alt', 'route' => 'sale-returns.index', 'can' => 'sale_returns.view', 'active' => ['sale-returns.*']],
-        ['label' => 'Delivery Notes', 'icon' => 'fas fa-shipping-fast', 'route' => 'delivery-notes.index', 'can' => 'delivery_notes.view', 'active' => ['delivery-notes.*']],
 
         ['header' => 'Purchases'],
         ['label' => 'Purchase Orders', 'icon' => 'fas fa-clipboard-list', 'route' => 'purchase-orders.index', 'can' => 'purchase_orders.view', 'active' => ['purchase-orders.*']],

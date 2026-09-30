@@ -32,7 +32,7 @@
                     <table class="table table-bordered table-striped table-hover w-100" id="invoices_table">
                         <thead>
                         <tr>
-                            <th>Date</th><th>Invoice No.</th><th>Customer</th><th>Subtotal</th><th>Discount</th><th>Tax</th>
+                            <th>Date</th><th>Invoice No.</th><th>Customer</th><th>Subtotal</th><th>Discount</th><th>Tax</th><th>Shipping &amp; Charges</th>
                             <th>Total</th><th>Paid</th><th>Returned</th><th>Due</th><th>Status</th>
                         </tr>
                         </thead>
@@ -40,7 +40,7 @@
                         <tr>
                             <th colspan="3" class="text-right">Total:</th>
                             <th class="text-right" data-total="subtotal"></th><th class="text-right" data-total="discount"></th>
-                            <th class="text-right" data-total="tax"></th><th class="text-right" data-total="total"></th>
+                            <th class="text-right" data-total="tax"></th><th class="text-right" data-total="charges"></th><th class="text-right" data-total="total"></th>
                             <th class="text-right" data-total="paid"></th><th class="text-right" data-total="returned"></th>
                             <th class="text-right" data-total="due"></th><th></th>
                         </tr>
@@ -61,18 +61,18 @@
                         </tr>
                         </tfoot>
                     </table>
-                    <small class="text-muted">Revenue is line value after line discounts, before invoice-level discounts.</small>
+                    <small class="text-muted">Revenue is net of line and invoice discounts, excluding tax and shipping / additional charges.</small>
                 </div>
                 <div class="tab-pane fade" id="tab_daily" role="tabpanel">
                     <table class="table table-bordered table-striped table-hover w-100" id="daily_table">
                         <thead>
-                        <tr><th>Date</th><th>Invoices</th><th>Net Sales (excl. tax)</th><th>Tax</th><th>Total</th><th>Paid</th><th>Due</th></tr>
+                        <tr><th>Date</th><th>Invoices</th><th>Net Sales (excl. tax)</th><th>Tax</th><th>Shipping &amp; Charges</th><th>Total</th><th>Paid</th><th>Due</th></tr>
                         </thead>
                         <tfoot>
                         <tr>
                             <th class="text-right">Total:</th>
                             <th class="text-center" data-total="d_count" data-format="raw"></th><th class="text-right" data-total="d_net"></th>
-                            <th class="text-right" data-total="d_tax"></th><th class="text-right" data-total="d_total"></th>
+                            <th class="text-right" data-total="d_tax"></th><th class="text-right" data-total="d_charges"></th><th class="text-right" data-total="d_total"></th>
                             <th class="text-right" data-total="d_paid"></th><th class="text-right" data-total="d_due"></th>
                         </tr>
                         </tfoot>
@@ -98,6 +98,7 @@
                 { data: 'subtotal', name: 'subtotal', render: RPT.money, className: r, searchable: false },
                 { data: 'discount_amount', name: 'discount_amount', render: RPT.money, className: r, searchable: false },
                 { data: 'tax_amount', name: 'tax_amount', render: RPT.money, className: r, searchable: false },
+                { data: 'charges', name: 'charges', render: RPT.money, className: r, searchable: false, orderable: false },
                 { data: 'total', name: 'total', render: RPT.money, className: r, searchable: false },
                 { data: 'paid_amount', name: 'paid_amount', render: RPT.money, className: r, searchable: false },
                 { data: 'returned_amount', name: 'returned_amount', render: RPT.money, className: r, searchable: false },
@@ -115,6 +116,7 @@
             RPT.client('#daily_table', url, 'daily', [
                 { data: 'date', render: RPT.sortable }, { data: 'count', className: 'text-center' },
                 { data: 'net', render: RPT.money, className: r }, { data: 'tax', render: RPT.money, className: r },
+                { data: 'charges', render: RPT.money, className: r },
                 { data: 'total', render: RPT.money, className: r }, { data: 'paid', render: RPT.money, className: r },
                 { data: 'due', render: RPT.money, className: r }
             ], { order: [[0, 'desc']] });

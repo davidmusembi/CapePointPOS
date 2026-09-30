@@ -294,3 +294,99 @@ label { font-weight: 600 !important; font-size: .82rem; color: #344054; margin-b
 .dataTables_wrapper .dt-scroll table.dataTable { margin: 0 !important; }
 .dataTables_wrapper .dt-scroll td, .dataTables_wrapper .dt-scroll th { white-space: nowrap; }
 .dataTables_wrapper .dt-scroll td.wrap, .dataTables_wrapper .dt-scroll td .wrap { white-space: normal; }
+
+/* ---- Table horizontal scrolling: pinned Action column, drag-to-scroll, edge shadows ---- */
+.dataTables_wrapper .dt-scroll { position: relative; scrollbar-width: thin; scrollbar-color: #b9c3d1 transparent; cursor: grab; }
+.dataTables_wrapper .dt-scroll.dragging { cursor: grabbing; user-select: none; }
+.dataTables_wrapper .dt-scroll::-webkit-scrollbar { height: 10px; }
+.dataTables_wrapper .dt-scroll::-webkit-scrollbar-thumb { background: #b9c3d1; border-radius: 10px; border: 2px solid #fff; }
+.dataTables_wrapper .dt-scroll::-webkit-scrollbar-thumb:hover { background: #8f9bb0; }
+.dataTables_wrapper .dt-scroll a, .dataTables_wrapper .dt-scroll button, .dataTables_wrapper .dt-scroll input,
+.dataTables_wrapper .dt-scroll select { cursor: pointer; }
+/* Action column pinned on the left while scrolling */
+table.dataTable.action-first > thead > tr > th:first-child,
+table.dataTable.action-first > tbody > tr > td:first-child,
+table.dataTable.action-first > tfoot > tr > th:first-child { position: sticky; left: 0; z-index: 2; background-clip: padding-box; }
+table.dataTable.action-first > thead > tr > th:first-child { background: #f6f8fb; z-index: 3; }
+table.dataTable.action-first > tbody > tr > td:first-child { background: #fff; }
+table.dataTable.action-first.table-striped > tbody > tr:nth-of-type(odd) > td:first-child { background: #fafbfd; }
+table.dataTable.action-first.table-hover > tbody > tr:hover > td:first-child { background: #f1f6fc; }
+table.dataTable.action-first > tfoot > tr > th:first-child { background: #f6f8fb; }
+.dt-scroll.scrolled-x table.dataTable.action-first > tbody > tr > td:first-child,
+.dt-scroll.scrolled-x table.dataTable.action-first > thead > tr > th:first-child,
+.dt-scroll.scrolled-x table.dataTable.action-first > tfoot > tr > th:first-child { box-shadow: 6px 0 8px -6px rgba(16,24,40,.25); }
+table.dataTable.action-first > thead > tr > th:first-child,
+table.dataTable.action-first > tbody > tr > td:first-child { width: 1%; text-align: center; }
+/* soft edge shadow when more columns are hidden on the right */
+.dataTables_wrapper .dt-scroll-wrap { position: relative; }
+.dataTables_wrapper .dt-scroll-wrap.more-right::after { content: ""; position: absolute; top: 0; right: 0; bottom: 10px; width: 28px; pointer-events: none;
+    background: linear-gradient(to left, rgba(16,24,40,.10), rgba(16,24,40,0)); border-radius: 0 6px 6px 0; z-index: 4; }
+
+/* ==========================================================================
+   Responsive refinements (tablet / phone)
+   ========================================================================== */
+.content-header .col-sm-5 { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; }
+.content-header .col-sm-5 > * { margin: 0 !important; }
+img, canvas { max-width: 100%; }
+.card-tools { max-width: 100%; }
+.nav-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+.nav-tabs .nav-link { white-space: nowrap; }
+.items-table { min-width: 760px; }                       /* line-item grids scroll inside .table-responsive */
+.totals-table td:first-child { white-space: normal; }
+
+@media (max-width: 991.98px) {
+    .content-header h1 { font-size: 1.2rem; }
+    .stat-tile .stat-value { font-size: 1.15rem; }
+    .navbar-quick { display: none !important; }
+}
+
+@media (max-width: 767.98px) {
+    body { font-size: .88rem; }
+    .content-header { padding: 12px .25rem 4px; }
+    .content-header .col-sm-5 { justify-content: flex-start; margin-top: .5rem; }
+    .content-header .col-sm-5 .btn { font-size: .8rem; padding: .3rem .6rem; }
+    .content > .container-fluid { padding-left: .5rem; padding-right: .5rem; }
+    .card-body { padding: .85rem; }
+    .card > .card-header { padding: .7rem .85rem; }
+    .card-header .card-tools { float: none; margin: .4rem 0 0; display: block; }
+    .stat-tile { min-height: 84px; padding: .8rem .9rem; }
+    .stat-tile .stat-icon { width: 40px; height: 40px; font-size: 1.05rem; margin-right: .7rem; }
+    .summary-box .value { font-size: 1rem; }
+    /* plain (non-DataTables) tables on detail pages scroll sideways instead of overflowing */
+    .card-body table.table:not(.dataTable):not(.totals-table):not(.info-list) { display: block; width: 100%; overflow-x: auto; white-space: nowrap; }
+    .doc-header { flex-direction: column; }
+    .doc-meta { min-width: 0 !important; }
+    /* DataTables toolbar stacks */
+    .dataTables_wrapper .dt-toolbar > div { flex: 0 0 100%; max-width: 100%; text-align: center !important; margin-bottom: .4rem; }
+    .dataTables_wrapper .dataTables_filter input { min-width: 0; width: 100% !important; margin-left: 0 !important; }
+    .dataTables_wrapper .dataTables_filter label { width: 100%; }
+    .dataTables_wrapper .dt-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
+    .dataTables_wrapper .dt-buttons .btn { flex: 0 0 auto; }
+    .dataTables_wrapper .dataTables_paginate { text-align: center; margin-top: .4rem; }
+    .dataTables_wrapper .dataTables_paginate .pagination { justify-content: center !important; flex-wrap: wrap; }
+    .dataTables_wrapper .dataTables_info { text-align: center; }
+    .modal-dialog { margin: .5rem; }
+    .payment-panel { padding: .8rem; }
+    .login-box { width: 92vw; }
+    .daterangepicker { max-width: calc(100vw - 16px); }
+    .daterangepicker .ranges ul { width: 100%; }
+    .daterangepicker.show-calendar .drp-calendar { float: none; }
+    #dashboard_date_filter { width: 100%; }
+    .main-footer .float-right { display: none; }
+}
+
+@media (max-width: 575.98px) {
+    .stat-tile .stat-value { font-size: 1.05rem; }
+    .btn-lg { font-size: 1rem; padding: .45rem .9rem; }
+    .form-row > [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
+}
+
+/* Action menus open to the right of the (first-column) button and above the sidebar */
+.dataTables_wrapper .btn-group > .dropdown-menu { z-index: 1060; min-width: 11rem; }
+.totals-table .d-flex { flex-wrap: wrap; gap: .25rem; }
+.totals-table .d-flex .form-control { max-width: 100%; }
+@media (max-width: 575.98px) {
+    .totals-table .d-flex select, .totals-table .d-flex input { width: calc(50% - .25rem) !important; }
+}
+table.dataTable > tbody > tr > td.menu-open { z-index: 1061 !important; position: sticky; }
+table.dataTable:not(.action-first) > tbody > tr > td.menu-open { position: relative; }

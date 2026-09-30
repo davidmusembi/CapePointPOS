@@ -120,6 +120,78 @@
             zeroRecords: 'No matching records found'
         }
     });
+    /* ---------------------------------------------------------------------
+     | Action column first - applied to every DataTable before it initialises.
+     | Moves the "action" column (columns option, or a header cell titled
+     | "Action") to position 0: header, footer (colspans adjusted), body rows
+     | of DOM tables, and remaps order / columnDefs indexes.
+     * ------------------------------------------------------------------- */
+    function moveCell($row, from) {
+        var pos = 0, moved = false;
+        $row.children('th,td').each(function () {
+            var span = parseInt($(this).attr('colspan'), 10) || 1;
+            if (!moved && from >= pos && from < pos + span) {
+                if (span > 1) {
+                    // the column sits inside a spanned cell: shrink it and add an empty leading cell
+                    $(this).attr('colspan', span - 1);
+                    $row.prepend(document.createElement(this.tagName));
+                } else {
+                    $row.prepend(this);
+                }
+                moved = true;
+            }
+            pos += span;
+        });
+    }
+
+    function remapIndex(i, from) {
+        return i === from ? 0 : (i < from ? i + 1 : i);
+    }
+
+    APP.actionColumnFirst = function (table, o) {
+        var $t = $(table), from = -1, domMode = false;
+        if ($.isArray(o.columns)) {
+            $.each(o.columns, function (i, c) { if (c && (c.data === 'action' || c.name === 'action')) { from = i; return false; } });
+        } else {
+            $t.find('thead tr:last > th').each(function (i) {
+                if ($.trim($(this).text()).toLowerCase() === 'action') { from = i; return false; }
+            });
+            domMode = true;
+        }
+        if (from <= 0) { return; }
+
+        if (!domMode) { o.columns.unshift(o.columns.splice(from, 1)[0]); }
+        $t.find('thead tr, tfoot tr').each(function () { moveCell($(this), from); });
+        if (domMode) { $t.find('tbody tr').each(function () { if ($(this).children().length > from) { moveCell($(this), from); } }); }
+
+        var order = o.order !== undefined ? o.order : $.fn.dataTable.defaults.order;
+        if ($.isArray(order)) {
+            o.order = $.map(order, function (x) { return $.isArray(x) ? [[remapIndex(x[0], from), x[1]]] : [x]; });
+        }
+        if ($.isArray(o.columnDefs)) {
+            $.each(o.columnDefs, function (i, d) {
+                if (d.targets === undefined) { return; }
+                var t = $.isArray(d.targets) ? d.targets : [d.targets];
+                d.targets = $.map(t, function (x) { return typeof x === 'number' && x >= 0 ? remapIndex(x, from) : x; });
+            });
+        }
+        $t.addClass('action-first');
+    };
+
+    (function () {
+        var original = $.fn.DataTable;
+        var patched = function (opts) {
+            if (opts && typeof opts === 'object' && !$.isArray(opts)) {
+                this.each(function () {
+                    if (!$.fn.dataTable.isDataTable(this)) { APP.actionColumnFirst(this, opts); }
+                });
+            }
+            return original.apply(this, arguments);
+        };
+        $.each(original, function (k, v) { patched[k] = v; });
+        $.fn.DataTable = patched;
+    })();
+
     $.fn.dataTable.ext.errMode = function (settings, tn, message) { console.error(message); toastr.error('Could not load table data.'); };
 
     /** Put server-provided footer totals (json.totals) into <tfoot> cells with data-total="key". */
@@ -146,14 +218,83 @@
     $(document).on('show.bs.dropdown', '.dataTables_wrapper .btn-group', function () {
         var dd = $(this).children('[data-toggle="dropdown"]').data('bs.dropdown');
         if (dd && dd._config) { dd._config.popperConfig = $.extend({}, dd._config.popperConfig, { positionFixed: true }); }
+        // the pinned (sticky) Action cell is its own stacking context: lift it above the sidebar while open
+        $(this).closest('td').addClass('menu-open');
+        // open upwards when there isn't room below the button (menu height estimated from its items)
+        var $menu = $(this).children('.dropdown-menu');
+        var estimate = 16 + $menu.children('.dropdown-item').length * 34 + $menu.children('.dropdown-divider').length * 17;
+        var rect = this.getBoundingClientRect();
+        $(this).toggleClass('dropup', rect.bottom + estimate > window.innerHeight && rect.top > estimate);
+    });
+    $(document).on('hidden.bs.dropdown', '.dataTables_wrapper .btn-group', function () {
+        $(this).removeClass('dropup').closest('td').removeClass('menu-open');
+    });
+    // Close open table menus on real scrolling only: ignore the scroll that tapping a button can cause, the
+    // phone address-bar show/hide (height-only resize) and tiny movements right after opening.
+    var menuState = { at: 0, y: 0, width: window.innerWidth };
+    $(document).on('shown.bs.dropdown', '.dataTables_wrapper .btn-group', function () {
+        menuState = { at: Date.now(), y: window.pageYOffset, width: window.innerWidth };
     });
     var closeTableMenus = function () {
         $('.dataTables_wrapper .btn-group.show > [data-toggle="dropdown"]').dropdown('hide');
     };
-    $(window).on('scroll resize', closeTableMenus);
+    $(window).on('scroll', function () {
+        if (Date.now() - menuState.at > 350 && Math.abs(window.pageYOffset - menuState.y) > 24) { closeTableMenus(); }
+    });
+    $(window).on('resize', function () {
+        if (window.innerWidth !== menuState.width) { closeTableMenus(); }
+    });
     document.addEventListener('scroll', function (e) {
-        if ($(e.target).is('.dt-scroll')) { closeTableMenus(); }
+        if ($(e.target).is('.dt-scroll') && Date.now() - menuState.at > 350) { closeTableMenus(); }
     }, true);
+
+    /*
+     * Horizontal table scrolling: trackpad two-finger swipe and Shift + mouse wheel work natively on .dt-scroll;
+     * additionally the mouse can drag the table sideways, and edge shadows show when more columns are hidden.
+     */
+    APP.updateScrollHints = function (el) {
+        var $s = $(el), max = el.scrollWidth - el.clientWidth;
+        $s.toggleClass('scrolled-x', el.scrollLeft > 2);
+        $s.parent('.dt-scroll-wrap').toggleClass('more-right', max > 2 && el.scrollLeft < max - 2);
+    };
+    $(document).on('init.dt draw.dt column-visibility.dt', function (e, settings) {
+        var $scroll = $(settings.nTable).closest('.dt-scroll');
+        if (!$scroll.length) { return; }
+        if (!$scroll.parent().hasClass('dt-scroll-wrap')) { $scroll.wrap('<div class="dt-scroll-wrap"></div>'); }
+        APP.updateScrollHints($scroll[0]);
+    });
+    document.addEventListener('scroll', function (e) {
+        if ($(e.target).is('.dt-scroll')) { APP.updateScrollHints(e.target); }
+    }, true);
+    $(window).on('resize', function () { $('.dt-scroll').each(function () { APP.updateScrollHints(this); }); });
+
+    (function () {
+        var drag = null;
+        $(document).on('mousedown', '.dt-scroll', function (e) {
+            if (e.button !== 0 || $(e.target).closest('a, button, input, select, textarea, label, .dropdown-menu').length) { return; }
+            if (this.scrollWidth <= this.clientWidth) { return; }
+            drag = { el: this, x: e.pageX, left: this.scrollLeft, moved: false };
+        });
+        $(document).on('mousemove', function (e) {
+            if (!drag) { return; }
+            var dx = e.pageX - drag.x;
+            if (!drag.moved && Math.abs(dx) < 5) { return; }
+            drag.moved = true;
+            $(drag.el).addClass('dragging');
+            drag.el.scrollLeft = drag.left - dx;
+            e.preventDefault();
+        });
+        $(document).on('mouseup', function () {
+            if (!drag) { return; }
+            var moved = drag.moved, el = drag.el;
+            $(el).removeClass('dragging');
+            drag = null;
+            if (moved) {
+                // swallow the click that follows a drag so it doesn't trigger row links
+                el.addEventListener('click', function stop(ev) { ev.stopPropagation(); ev.preventDefault(); el.removeEventListener('click', stop, true); }, true);
+            }
+        });
+    })();
 
     APP.reloadTables = function () {
         $('table.dataTable').each(function () {

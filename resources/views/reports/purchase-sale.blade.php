@@ -21,7 +21,8 @@
                         <tr><th class="pl-3">Number of purchases</th><td class="text-right pr-3" data-summary="purchase_count" data-format="raw">-</td></tr>
                         <tr><th class="pl-3">Total purchase (excl. tax, after discount)</th><td class="text-right pr-3" data-summary="purchase_excl">-</td></tr>
                         <tr><th class="pl-3">Input tax</th><td class="text-right pr-3" data-summary="purchase_tax">-</td></tr>
-                        <tr><th class="pl-3">Purchase including tax</th><td class="text-right pr-3 font-weight-bold" data-summary="purchase_incl">-</td></tr>
+                        <tr><th class="pl-3">Shipping &amp; additional charges</th><td class="text-right pr-3" data-summary="purchase_charges">-</td></tr>
+                        <tr><th class="pl-3">Purchase total (incl. tax &amp; charges)</th><td class="text-right pr-3 font-weight-bold" data-summary="purchase_incl">-</td></tr>
                         <tr><th class="pl-3">Total purchase return</th><td class="text-right pr-3" data-summary="purchase_return">-</td></tr>
                         <tr><th class="pl-3">Purchase due</th><td class="text-right pr-3 text-danger font-weight-bold" data-summary="purchase_due">-</td></tr>
                     </table>
@@ -36,7 +37,8 @@
                         <tr><th class="pl-3">Number of invoices</th><td class="text-right pr-3" data-summary="sale_count" data-format="raw">-</td></tr>
                         <tr><th class="pl-3">Total sale (excl. tax, after discount)</th><td class="text-right pr-3" data-summary="sale_excl">-</td></tr>
                         <tr><th class="pl-3">Output tax</th><td class="text-right pr-3" data-summary="sale_tax">-</td></tr>
-                        <tr><th class="pl-3">Sale including tax</th><td class="text-right pr-3 font-weight-bold" data-summary="sale_incl">-</td></tr>
+                        <tr><th class="pl-3">Shipping &amp; additional charges</th><td class="text-right pr-3" data-summary="sale_charges">-</td></tr>
+                        <tr><th class="pl-3">Sale total (incl. tax &amp; charges)</th><td class="text-right pr-3 font-weight-bold" data-summary="sale_incl">-</td></tr>
                         <tr><th class="pl-3">Total sell return</th><td class="text-right pr-3" data-summary="sale_return">-</td></tr>
                         <tr><th class="pl-3">Sale due</th><td class="text-right pr-3 text-danger font-weight-bold" data-summary="sale_due">-</td></tr>
                     </table>

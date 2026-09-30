@@ -60,7 +60,7 @@ class ProductController extends Controller implements HasMiddleware
                     ['label' => 'Delete', 'delete' => route('products.destroy', $p), 'can' => 'products.delete'],
                 ]))
                 ->filterColumn('category_name', fn ($q, $k) => $q->whereHas('category', fn ($c) => $c->where('name', 'like', "%{$k}%")))
-                ->rawColumns(['name', 'stock_quantity', 'action'])
+                ->rawColumns(['name', 'stock_quantity', 'action', 'category_name', 'tax'])
                 ->make(true);
         }
 
@@ -181,7 +181,7 @@ class ProductController extends Controller implements HasMiddleware
                     ['label' => 'Add Purchase', 'icon' => 'fas fa-truck-loading', 'url' => route('purchases.create', ['product_id' => $p->id]), 'can' => 'purchases.create'],
                     ['label' => 'View', 'icon' => 'fas fa-eye', 'url' => route('products.show', $p)],
                 ]))
-                ->rawColumns(['name', 'stock_quantity', 'action'])
+                ->rawColumns(['name', 'stock_quantity', 'action', 'category_name'])
                 ->make(true);
         }
 
@@ -201,7 +201,7 @@ class ProductController extends Controller implements HasMiddleware
             ->editColumn('balance_after', fn ($m) => qty_format($m->balance_after))
             ->editColumn('unit_cost', fn ($m) => money($m->unit_cost))
             ->addColumn('user', fn ($m) => e($m->creator->name ?? '-'))
-            ->rawColumns(['qty_in', 'qty_out'])
+            ->rawColumns(['qty_in', 'qty_out', 'type', 'reference_no', 'user'])
             ->make(true);
     }
 

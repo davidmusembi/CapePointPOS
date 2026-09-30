@@ -79,7 +79,7 @@ class SaleController extends Controller implements HasMiddleware
             'due' => (float) (clone $totalsQuery)->sum('due_amount'),
         ];
 
-        $query->with(['customer', 'creator'])->withCount('returns');
+        $query->with(['customer', 'creator', 'shippingNote:id,sale_id,from_sale'])->withCount('returns');
         $today = now()->startOfDay();
 
         return DataTables::eloquent($query)
@@ -108,6 +108,7 @@ class SaleController extends Controller implements HasMiddleware
                 ['label' => 'View', 'icon' => 'fas fa-eye', 'url' => route('sales.show', $s)],
                 $s->returns_count ? '-' : ['label' => 'Edit', 'icon' => 'fas fa-edit', 'url' => route('sales.edit', $s), 'can' => 'sales.edit'],
                 ['label' => 'Print Invoice', 'icon' => 'fas fa-print', 'url' => route('sales.print', $s), 'blank' => true],
+                $s->shippingNote ? ['label' => 'Print Delivery Note', 'icon' => 'fas fa-shipping-fast', 'url' => route('delivery-notes.print', $s->shippingNote), 'blank' => true, 'can' => 'delivery_notes.view'] : '-',
                 ['label' => 'Download PDF', 'icon' => 'far fa-file-pdf', 'url' => route('sales.print', [$s, 'download' => 1])],
                 '-',
                 $s->due_amount > 0 ? ['label' => 'Add Payment', 'icon' => 'fas fa-money-bill-wave', 'modal' => route('payments.create', ['type' => 'customer', 'sale_id' => $s->id]), 'can' => 'payments.create'] : '-',
@@ -119,7 +120,7 @@ class SaleController extends Controller implements HasMiddleware
             ]))
             ->filterColumn('customer_name', fn ($q, $k) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$k}%")->orWhere('company', 'like', "%{$k}%")))
             ->with('totals', $totals)
-            ->rawColumns(['invoice_no', 'due_amount', 'payment_status', 'shipping_status', 'due_date', 'days_overdue', 'action'])
+            ->rawColumns(['invoice_no', 'due_amount', 'payment_status', 'shipping_status', 'due_date', 'days_overdue', 'action', 'customer_name', 'added_by'])
             ->make(true);
     }
 
@@ -152,7 +153,7 @@ class SaleController extends Controller implements HasMiddleware
 
     public function show(Request $request, Sale $sale)
     {
-        $sale->load(['customer', 'creator', 'items.product.unit', 'allocations.payment', 'returns', 'deliveryNotes', 'deliveryPerson', 'attachments.uploader']);
+        $sale->load(['customer', 'creator', 'items.product.unit', 'allocations.payment', 'returns', 'deliveryNotes', 'deliveryPerson', 'attachments.uploader', 'shippingNote']);
 
         return view('sales.show', compact('sale'));
     }

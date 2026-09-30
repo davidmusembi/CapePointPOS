@@ -62,7 +62,7 @@ class SaleReturnController extends Controller implements HasMiddleware
                 ->filterColumn('invoice_no', fn ($q, $k) => $q->whereHas('sale', fn ($s) => $s->where('invoice_no', 'like', "%{$k}%")))
                 ->filterColumn('customer_name', fn ($q, $k) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$k}%")))
                 ->with('totals', $totals)
-                ->rawColumns(['return_no', 'invoice_no', 'refund_amount', 'action'])
+                ->rawColumns(['return_no', 'invoice_no', 'refund_amount', 'action', 'customer_name', 'reason'])
                 ->make(true);
         }
 

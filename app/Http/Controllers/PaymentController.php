@@ -73,7 +73,7 @@ class PaymentController extends Controller implements HasMiddleware
                     }
                 })
                 ->with('totals', $totals)
-                ->rawColumns(['payment_no', 'party', 'allocated_to', 'unallocated', 'action'])
+                ->rawColumns(['payment_no', 'party', 'allocated_to', 'unallocated', 'action', 'method', 'added_by'])
                 ->make(true);
         }
 

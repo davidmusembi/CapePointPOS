@@ -37,7 +37,7 @@ class ActivityLogController extends Controller
 
                     return '<small>'.$lines->implode('<br>').'</small>';
                 })
-                ->rawColumns(['log_name', 'description', 'changes'])
+                ->rawColumns(['log_name', 'description', 'changes', 'user'])
                 ->make(true);
         }
 

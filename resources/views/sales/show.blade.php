@@ -6,6 +6,11 @@
     <a href="{{ route('sales.index') }}" class="btn btn-default btn-sm"><i class="fas fa-arrow-left"></i> Back</a>
     <a href="{{ route('sales.print', $sale) }}" target="_blank" class="btn btn-default btn-sm"><i class="fas fa-print"></i> Print</a>
     <a href="{{ route('sales.print', [$sale, 'download' => 1]) }}" class="btn btn-default btn-sm"><i class="far fa-file-pdf"></i> PDF</a>
+    @if ($sale->shippingNote)
+        @can('delivery_notes.view')
+            <a href="{{ route('delivery-notes.print', $sale->shippingNote) }}" target="_blank" class="btn btn-default btn-sm" title="{{ $sale->shippingNote->delivery_no }}"><i class="fas fa-shipping-fast"></i> Print Delivery Note</a>
+        @endcan
+    @endif
     <div class="btn-group">
         <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown">More actions</button>
         <div class="dropdown-menu dropdown-menu-right">

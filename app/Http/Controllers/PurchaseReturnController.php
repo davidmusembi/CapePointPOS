@@ -65,7 +65,7 @@ class PurchaseReturnController extends Controller implements HasMiddleware
                 ]))
                 ->filterColumn('supplier_name', fn ($q, $k) => $q->whereHas('supplier', fn ($s) => $s->where('name', 'like', "%{$k}%")->orWhere('company', 'like', "%{$k}%")))
                 ->filterColumn('purchase_no', fn ($q, $k) => $q->whereHas('purchase', fn ($s) => $s->where('purchase_no', 'like', "%{$k}%")))
-                ->rawColumns(['return_no', 'purchase_no', 'refund_amount', 'action'])
+                ->rawColumns(['return_no', 'purchase_no', 'refund_amount', 'action', 'supplier_name', 'reason'])
                 ->with('totals', $totals)
                 ->make(true);
         }

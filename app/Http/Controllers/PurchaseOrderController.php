@@ -44,7 +44,7 @@ class PurchaseOrderController extends Controller implements HasMiddleware
                 ->addColumn('added_by', fn ($o) => e($o->creator->name ?? '-'))
                 ->addColumn('action', fn ($o) => $this->actions($this->rowActions($o)))
                 ->filterColumn('supplier_name', fn ($q, $k) => $q->whereHas('supplier', fn ($s) => $s->where('name', 'like', "%{$k}%")->orWhere('company', 'like', "%{$k}%")))
-                ->rawColumns(['lpo_no', 'status', 'action'])
+                ->rawColumns(['lpo_no', 'status', 'action', 'supplier_name', 'added_by'])
                 ->with('totals', $totals)
                 ->make(true);
         }

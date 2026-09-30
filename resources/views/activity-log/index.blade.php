@@ -33,7 +33,7 @@
     <div class="card card-primary card-outline">
         <div class="card-body">
             <table class="table table-bordered table-striped table-hover w-100" id="activity_table">
-                <thead><tr><th>Date</th><th>User</th><th>Module</th><th>Action</th><th>Changes</th></tr></thead>
+                <thead><tr><th>Date</th><th>User</th><th>Module</th><th>Activity</th><th>Changes</th></tr></thead>
             </table>
         </div>
     </div>

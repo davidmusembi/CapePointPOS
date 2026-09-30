@@ -31,7 +31,7 @@
                     <table class="table table-bordered table-striped table-hover w-100" id="purchases_table">
                         <thead>
                         <tr>
-                            <th>Date</th><th>Purchase No.</th><th>Supplier Inv.</th><th>Supplier</th><th>Subtotal</th><th>Discount</th><th>Tax</th>
+                            <th>Date</th><th>Purchase No.</th><th>Supplier Inv.</th><th>Supplier</th><th>Subtotal</th><th>Discount</th><th>Tax</th><th>Shipping &amp; Charges</th>
                             <th>Total</th><th>Paid</th><th>Returned</th><th>Due</th><th>Status</th>
                         </tr>
                         </thead>
@@ -39,7 +39,7 @@
                         <tr>
                             <th colspan="4" class="text-right">Total:</th>
                             <th class="text-right" data-total="subtotal"></th><th class="text-right" data-total="discount"></th>
-                            <th class="text-right" data-total="tax"></th><th class="text-right" data-total="total"></th>
+                            <th class="text-right" data-total="tax"></th><th class="text-right" data-total="charges"></th><th class="text-right" data-total="total"></th>
                             <th class="text-right" data-total="paid"></th><th class="text-right" data-total="returned"></th>
                             <th class="text-right" data-total="due"></th><th></th>
                         </tr>
@@ -81,6 +81,7 @@
                 { data: 'subtotal', name: 'subtotal', render: RPT.money, className: r, searchable: false },
                 { data: 'discount_amount', name: 'discount_amount', render: RPT.money, className: r, searchable: false },
                 { data: 'tax_amount', name: 'tax_amount', render: RPT.money, className: r, searchable: false },
+                { data: 'charges', name: 'charges', render: RPT.money, className: r, searchable: false, orderable: false },
                 { data: 'total', name: 'total', render: RPT.money, className: r, searchable: false },
                 { data: 'paid_amount', name: 'paid_amount', render: RPT.money, className: r, searchable: false },
                 { data: 'returned_amount', name: 'returned_amount', render: RPT.money, className: r, searchable: false },

@@ -1,6 +1,6 @@
 {{--
     Shipping section shared by the sales invoice and purchase forms. Params: $doc (Sale|Purchase), $docType ('sale'|'purchase').
-    On a sale a shipping status creates / updates the invoice's delivery note; on a purchase it tracks the inbound delivery.
+    Every invoice gets a delivery note kept in sync with this section; on a purchase it tracks the inbound delivery.
 --}}
 @php
     $isSale = ($docType ?? 'sale') === 'sale';
@@ -17,7 +17,7 @@
             @if ($shippingNote)
                 Delivery note: <a href="{{ route('delivery-notes.show', $shippingNote) }}" target="_blank">{{ $shippingNote->delivery_no }}</a>
             @elseif ($isSale)
-                Choosing a shipping status creates the delivery note automatically.
+                A delivery note is created automatically when the invoice is saved.
             @else
                 Shipping &amp; additional charges are added to the purchase total and to the landed cost of the items.
             @endif

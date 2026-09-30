@@ -10,10 +10,10 @@
 @endphp
 @if ($clean)
 <div class="btn-group">
-    <button type="button" class="btn btn-xs btn-actions dropdown-toggle" data-toggle="dropdown" data-boundary="window" aria-expanded="false">
+    <button type="button" class="btn btn-xs btn-actions dropdown-toggle" data-toggle="dropdown" data-boundary="viewport" aria-expanded="false">
         Actions
     </button>
-    <div class="dropdown-menu dropdown-menu-right">
+    <div class="dropdown-menu">
         @foreach ($clean as $item)
             @if ($item === '-')
                 <div class="dropdown-divider"></div>

@@ -174,18 +174,18 @@ class SaleService
     }
 
     /**
-     * Keep the invoice's delivery note in step with its shipping section:
-     * a shipping status creates / updates the note (items, address, recipient, delivery person, status);
-     * clearing the status removes the auto-generated note.
+     * Every invoice has exactly one delivery note, created when the invoice is saved and kept in step with it
+     * (items, address, recipient, delivery person). The shipping status, when chosen, is copied to the note;
+     * without one a new note starts at the first configured status and an existing note keeps its own.
      */
     public function syncShippingNote(Sale $sale): void
     {
         $note = $sale->shippingNote()->first();
 
-        if (! $sale->shipping_status) {
-            $note?->delete();
-
-            return;
+        // Adopt a note previously created for this invoice from the delivery notes module (no duplicates).
+        if (! $note) {
+            $note = DeliveryNote::where('sale_id', $sale->id)->orderBy('id')->first();
+            $note?->forceFill(['from_sale' => true]);
         }
 
         $customer = $sale->customer;
@@ -194,6 +194,7 @@ class SaleService
             'sale_id' => $sale->id,
             'from_sale' => true,
             'date' => $sale->date->toDateString(),
+            'status' => DeliveryNote::defaultStatus(),
         ]);
 
         $note->fill([
@@ -202,8 +203,8 @@ class SaleService
             'contact_person' => $sale->delivered_to ?: $customer->name,
             'contact_phone' => $customer->phone,
             'delivery_person_id' => $sale->delivery_person_id,
-            'driver_name' => $sale->deliveryPerson?->name,
-            'status' => $sale->shipping_status,
+            'driver_name' => $sale->deliveryPerson?->name ?? $note->driver_name,
+            'status' => $sale->shipping_status ?: ($note->status ?: DeliveryNote::defaultStatus()),
             'notes' => $sale->shipping_details,
         ])->save();
 

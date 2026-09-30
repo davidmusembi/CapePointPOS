@@ -33,6 +33,7 @@ class PurchaseController extends Controller implements HasMiddleware
                 ->when($request->start_date && $request->end_date, fn ($q) => $q->whereBetween('purchases.date', [$request->start_date, $request->end_date]))
                 ->when($request->supplier_id, fn ($q, $v) => $q->where('purchases.supplier_id', $v))
                 ->when($request->payment_status, fn ($q, $v) => $q->where('purchases.payment_status', $v))
+                ->when($request->shipping_status, fn ($q, $v) => $v === 'none' ? $q->whereNull('purchases.shipping_status') : $q->where('purchases.shipping_status', $v))
                 ->when($request->purchase_order_id, fn ($q, $v) => $q->where('purchases.purchase_order_id', $v));
 
             $totals = (clone $base)->selectRaw('COALESCE(SUM(total),0) total, COALESCE(SUM(paid_amount),0) paid, COALESCE(SUM(returned_amount),0) returned, COALESCE(SUM(due_amount),0) due')
@@ -51,11 +52,12 @@ class PurchaseController extends Controller implements HasMiddleware
                 ->editColumn('returned_amount', fn ($p) => $p->returned_amount > 0 ? money($p->returned_amount) : '-')
                 ->editColumn('due_amount', fn ($p) => $p->due_amount > 0 ? '<span class="amount-positive">'.money($p->due_amount).'</span>' : money(0))
                 ->editColumn('payment_status', fn ($p) => payment_status_badge($p->payment_status))
+                ->editColumn('shipping_status', fn ($p) => shipping_status_badge($p->shipping_status))
                 ->addColumn('added_by', fn ($p) => e($p->creator->name ?? '-'))
                 ->addColumn('action', fn ($p) => $this->actions($this->rowActions($p)))
                 ->filterColumn('supplier_name', fn ($q, $k) => $q->whereHas('supplier', fn ($s) => $s->where('name', 'like', "%{$k}%")->orWhere('company', 'like', "%{$k}%")))
                 ->filterColumn('lpo_no', fn ($q, $k) => $q->whereHas('purchaseOrder', fn ($s) => $s->where('lpo_no', 'like', "%{$k}%")))
-                ->rawColumns(['purchase_no', 'lpo_no', 'due_amount', 'payment_status', 'action'])
+                ->rawColumns(['purchase_no', 'lpo_no', 'due_amount', 'payment_status', 'shipping_status', 'action', 'supplier_invoice_no', 'supplier_name', 'added_by'])
                 ->with('totals', $totals)
                 ->make(true);
         }

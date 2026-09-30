@@ -47,11 +47,11 @@ class DeliveryNoteController extends Controller implements HasMiddleware
                         '-',
                     ],
                     $this->statusActions($d),
-                    ['-', ['label' => 'Delete', 'delete' => route('delivery-notes.destroy', $d), 'can' => 'delivery_notes.delete']],
+                    $d->from_sale ? [] : ['-', ['label' => 'Delete', 'delete' => route('delivery-notes.destroy', $d), 'can' => 'delivery_notes.delete']],
                 )))
                 ->filterColumn('invoice_no', fn ($q, $k) => $q->whereHas('sale', fn ($s) => $s->where('invoice_no', 'like', "%{$k}%")))
                 ->filterColumn('customer_name', fn ($q, $k) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$k}%")))
-                ->rawColumns(['delivery_no', 'invoice_no', 'status', 'action'])
+                ->rawColumns(['delivery_no', 'invoice_no', 'status', 'action', 'customer_name', 'delivery_address', 'transport'])
                 ->make(true);
         }
 
@@ -136,12 +136,10 @@ class DeliveryNoteController extends Controller implements HasMiddleware
 
     public function destroy(DeliveryNote $deliveryNote)
     {
-        DB::transaction(function () use ($deliveryNote) {
-            if ($deliveryNote->from_sale && $deliveryNote->sale) {
-                $deliveryNote->sale->forceFill(['shipping_status' => null])->saveQuietly();
-            }
-            $deliveryNote->delete();
-        });
+        if ($deliveryNote->from_sale && $deliveryNote->sale && ! $deliveryNote->sale->trashed()) {
+            return $this->failure("Delivery note {$deliveryNote->delivery_no} belongs to invoice {$deliveryNote->sale->invoice_no} and is removed together with the invoice.");
+        }
+        $deliveryNote->delete();
 
         return $this->success("Delivery note {$deliveryNote->delivery_no} deleted", route('delivery-notes.index'));
     }
