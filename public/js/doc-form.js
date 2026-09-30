@@ -143,7 +143,8 @@
 
         // payment rows (split payments)
         if ($('#payment_rows').length) {
-            var paid = 0;
+            // include payments allocated from the Payments module (read-only on the form)
+            var paid = parseFloat($('#payment_rows').data('offset')) || 0;
             $('#payment_rows .pay-amount').each(function () { paid += Math.max(0, parseFloat($(this).val()) || 0); });
             paid = APP.round(paid);
             var balance = APP.round(total - paid);

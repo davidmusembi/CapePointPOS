@@ -95,6 +95,11 @@ class PurchaseService
             $this->revertReceipt($purchase);
             $this->fill($purchase, $data);
 
+            // Payment rows edited on the purchase form (added / changed / removed)
+            if (! empty($data['payments_present'])) {
+                $this->payments->syncDocumentPayments($purchase, $data);
+            }
+
             $allocated = round((float) $purchase->allocations()->sum('amount'), 2);
             if ($allocated - $purchase->total > 0.009) {
                 throw ValidationException::withMessages(['items' => 'The purchase total ('.money($purchase->total).') cannot be less than the payments already allocated to it ('.money($allocated).'). Remove or reduce those payments first.']);
@@ -169,6 +174,22 @@ class PurchaseService
 
         $terms = SaleService::resolveTerms($data['payment_terms'] ?? null, $supplier->payment_terms);
 
+        // Shipping & additional charges: payable to the supplier on top of the taxable total.
+        $shipping = round(max(0, (float) ($data['shipping_charges'] ?? 0)), 2);
+        $charges = SaleService::normaliseCharges($data['additional_charges'] ?? []);
+        $chargesTotal = round(array_sum(array_column($charges, 'amount')), 2);
+
+        $purchase->fill([
+            'shipping_details' => $data['shipping_details'] ?? null,
+            'shipping_address' => $data['shipping_address'] ?? null,
+            'shipping_charges' => $shipping,
+            'shipping_status' => $data['shipping_status'] ?? null,
+            'delivered_to' => $data['delivered_to'] ?? null,
+            'delivery_person_id' => $data['delivery_person_id'] ?? null,
+            'additional_charges' => $charges ?: null,
+            'additional_charges_total' => $chargesTotal,
+        ]);
+
         $purchase->fill([
             'supplier_id' => $supplier->id,
             'purchase_order_id' => $order?->id,
@@ -182,14 +203,26 @@ class PurchaseService
             'subtotal' => $totals['subtotal'],
             'tax_amount' => $totals['tax_amount'],
             'discount_amount' => $totals['discount_amount'],
-            'total' => $totals['total'],
+            'total' => round($totals['total'] + $shipping + $chargesTotal, 2),
         ]);
         $purchase->save();
 
-        // Line net amounts already include the pro-rated document discount, so net / qty is the landed unit cost.
+        // Landed cost = line net (already incl. its share of the document discount) + its share of the
+        // shipping / additional charges, spread over stock-tracked lines by value (last line absorbs rounding).
         $products = Product::withTrashed()->whereIn('id', array_column($totals['lines'], 'product_id'))->get()->keyBy('id');
+        $capitalise = round($shipping + $chargesTotal, 2);
+        $stockKeys = array_keys(array_filter($totals['lines'], fn ($l) => $products[$l['product_id']]->track_stock && $l['net_amount'] > 0));
+        $stockNet = array_sum(array_map(fn ($k) => $totals['lines'][$k]['net_amount'], $stockKeys));
+        $chargeShare = [];
+        $allocated = 0.0;
+        foreach ($stockKeys as $i => $k) {
+            $chargeShare[$k] = $i === array_key_last($stockKeys)
+                ? round($capitalise - $allocated, 2)
+                : round($stockNet > 0 ? $capitalise * $totals['lines'][$k]['net_amount'] / $stockNet : 0, 2);
+            $allocated += $chargeShare[$k];
+        }
 
-        foreach ($totals['lines'] as $line) {
+        foreach ($totals['lines'] as $key => $line) {
             $orderItemId = $order && ! empty($line['purchase_order_item_id'])
                 ? $order->items()->whereKey($line['purchase_order_item_id'])->value('id')
                 : null;
@@ -211,7 +244,7 @@ class PurchaseService
                 PurchaseOrderItem::whereKey($orderItemId)->increment('received_quantity', $line['quantity']);
             }
 
-            $landedCost = $line['quantity'] > 0 ? round($line['net_amount'] / $line['quantity'], 4) : 0;
+            $landedCost = $line['quantity'] > 0 ? round(($line['net_amount'] + ($chargeShare[$key] ?? 0)) / $line['quantity'], 4) : 0;
             $this->stock->move($products[$line['product_id']], $line['quantity'], 'purchase', $purchase, $purchase->purchase_no, $purchase->date, $landedCost, null, true);
         }
 

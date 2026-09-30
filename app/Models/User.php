@@ -14,7 +14,7 @@ class User extends Authenticatable
 {
     use HasFactory, HasRoles, LogsActivity, Notifiable, SoftDeletes;
 
-    protected $fillable = ['name', 'email', 'password', 'phone', 'is_active'];
+    protected $fillable = ['name', 'username', 'email', 'password', 'phone', 'is_active'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -32,9 +32,15 @@ class User extends Authenticatable
     {
         return LogOptions::defaults()
             ->useLogName('User')
-            ->logOnly(['name', 'email', 'phone', 'is_active'])
+            ->logOnly(['name', 'username', 'email', 'phone', 'is_active'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
+    }
+
+    /** Usernames are stored lower-case so sign-in is case-insensitive. */
+    public function setUsernameAttribute($value): void
+    {
+        $this->attributes['username'] = mb_strtolower(trim((string) $value));
     }
 
     public function getRoleNameAttribute(): string

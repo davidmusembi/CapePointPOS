@@ -114,7 +114,6 @@ class SaleController extends Controller implements HasMiddleware
                 ['label' => 'View Payments', 'icon' => 'fas fa-list-alt', 'modal' => route('sales.payments', $s)],
                 '-',
                 ['label' => 'Sales Return', 'icon' => 'fas fa-undo-alt', 'url' => route('sale-returns.create', ['sale_id' => $s->id]), 'can' => 'sale_returns.create'],
-                ['label' => 'Create Delivery Note', 'icon' => 'fas fa-shipping-fast', 'url' => route('delivery-notes.create', ['sale_id' => $s->id]), 'can' => 'delivery_notes.create'],
                 '-',
                 ['label' => 'Delete', 'delete' => route('sales.destroy', $s), 'can' => 'sales.delete', 'message' => 'The invoice will be deleted and its stock restored.'],
             ]))
@@ -250,7 +249,7 @@ class SaleController extends Controller implements HasMiddleware
 
     protected function validated(Request $request): array
     {
-        return $request->validate(\App\Services\PaymentService::rowRules() + [
+        return $request->validate(\App\Services\PaymentService::rowRules() + SaleService::shippingRules() + [
             'customer_id' => ['required', 'exists:customers,id'],
             'date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:date'],
@@ -266,21 +265,8 @@ class SaleController extends Controller implements HasMiddleware
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'shipping_details' => ['nullable', 'string', 'max:2000'],
-            'shipping_address' => ['nullable', 'string', 'max:1000'],
-            'shipping_charges' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
-            'shipping_status' => ['nullable', Rule::in(array_keys(shipping_statuses()))],
-            'delivered_to' => ['nullable', 'string', 'max:190'],
-            'delivery_person_id' => ['nullable', Rule::exists('users', 'id')],
-            'additional_charges' => ['nullable', 'array', 'max:20'],
-            'additional_charges.*.name' => ['nullable', 'string', 'max:120'],
-            'additional_charges.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
-            'shipping_documents' => ['nullable', 'array', 'max:'.(int) config('pos.attachments.max_files', 10)],
-            'shipping_documents.*' => AttachmentService::rules(),
         ], [
-            'shipping_documents.*.mimes' => 'Shipping documents must be one of: '.implode(', ', config('pos.attachments.mimes')).'.',
-            'shipping_documents.*.max' => 'Each shipping document may not be larger than '.round(config('pos.attachments.max_kb') / 1024).' MB.',
             'items.required' => 'Add at least one product to the invoice.',
-        ]);
+        ] + SaleService::shippingMessages());
     }
 }

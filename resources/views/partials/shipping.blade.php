@@ -1,10 +1,14 @@
-{{-- Shipping section of the sales invoice form. A shipping status creates / updates the invoice's delivery note. --}}
+{{--
+    Shipping section shared by the sales invoice and purchase forms. Params: $doc (Sale|Purchase), $docType ('sale'|'purchase').
+    On a sale a shipping status creates / updates the invoice's delivery note; on a purchase it tracks the inbound delivery.
+--}}
 @php
-    $charges = old('additional_charges', $sale->additional_charges ?? []);
+    $isSale = ($docType ?? 'sale') === 'sale';
+    $charges = old('additional_charges', $doc->additional_charges ?? []);
     $rows = max((int) config('pos.additional_charge_rows', 4), count($charges));
     $hasCharges = collect($charges)->contains(fn ($c) => (float) ($c['amount'] ?? 0) > 0);
     $attachCfg = config('pos.attachments');
-    $shippingNote = $sale->exists ? $sale->shippingNote()->first() : null;
+    $shippingNote = $isSale && $doc->exists ? $doc->shippingNote()->first() : null;
 @endphp
 <div class="card card-teal card-outline">
     <div class="card-header">
@@ -12,8 +16,10 @@
         <div class="card-tools small text-muted">
             @if ($shippingNote)
                 Delivery note: <a href="{{ route('delivery-notes.show', $shippingNote) }}" target="_blank">{{ $shippingNote->delivery_no }}</a>
-            @else
+            @elseif ($isSale)
                 Choosing a shipping status creates the delivery note automatically.
+            @else
+                Shipping &amp; additional charges are added to the purchase total and to the landed cost of the items.
             @endif
         </div>
     </div>
@@ -22,21 +28,21 @@
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="shipping_details">Shipping details</label>
-                    <textarea name="shipping_details" id="shipping_details" rows="3" class="form-control" maxlength="2000" placeholder="Shipping details">{{ old('shipping_details', $sale->shipping_details) }}</textarea>
+                    <textarea name="shipping_details" id="shipping_details" rows="3" class="form-control" maxlength="2000" placeholder="Shipping details">{{ old('shipping_details', $doc->shipping_details) }}</textarea>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="shipping_address">Shipping address</label>
-                    <textarea name="shipping_address" id="shipping_address" rows="3" class="form-control" maxlength="1000" placeholder="Shipping address">{{ old('shipping_address', $sale->shipping_address) }}</textarea>
+                    <textarea name="shipping_address" id="shipping_address" rows="3" class="form-control" maxlength="1000" placeholder="Shipping address">{{ old('shipping_address', $doc->shipping_address) }}</textarea>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="shipping_charges">Shipping charges</label>
                     <div class="input-group">
-                        <div class="input-group-prepend"><span class="input-group-text" data-toggle="tooltip" title="Added to the invoice total after tax"><i class="fas fa-info"></i></span></div>
-                        <input type="number" step="any" min="0" name="shipping_charges" id="shipping_charges" class="form-control text-right" value="{{ old('shipping_charges', (float) $sale->shipping_charges) }}">
+                        <div class="input-group-prepend"><span class="input-group-text" data-toggle="tooltip" title="{{ $isSale ? 'Added to the invoice total after tax' : 'Added to the purchase total and the landed cost of stock' }}"><i class="fas fa-info"></i></span></div>
+                        <input type="number" step="any" min="0" name="shipping_charges" id="shipping_charges" class="form-control text-right" value="{{ old('shipping_charges', (float) $doc->shipping_charges) }}">
                     </div>
                 </div>
             </div>
@@ -47,15 +53,15 @@
                     <select name="shipping_status" id="shipping_status" class="form-control custom-select">
                         <option value="">Please select</option>
                         @foreach (shipping_statuses() as $key => $label)
-                            <option value="{{ $key }}" @selected(old('shipping_status', $sale->shipping_status) === $key)>{{ $label }}</option>
+                            <option value="{{ $key }}" @selected(old('shipping_status', $doc->shipping_status) === $key)>{{ $label }}</option>
                         @endforeach
                     </select>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
-                    <label for="delivered_to">Delivered to</label>
-                    <input type="text" name="delivered_to" id="delivered_to" class="form-control" maxlength="190" placeholder="Delivered to" value="{{ old('delivered_to', $sale->delivered_to) }}">
+                    <label for="delivered_to">{{ $isSale ? 'Delivered to' : 'Received by' }}</label>
+                    <input type="text" name="delivered_to" id="delivered_to" class="form-control" maxlength="190" placeholder="{{ $isSale ? 'Delivered to' : 'Received by' }}" value="{{ old('delivered_to', $doc->delivered_to) }}">
                 </div>
             </div>
             <div class="col-md-4">
@@ -64,7 +70,7 @@
                     <select name="delivery_person_id" id="delivery_person_id" class="form-control select2" data-allow-clear="true" data-placeholder="Please select">
                         <option value=""></option>
                         @foreach ($deliveryPeople as $id => $name)
-                            <option value="{{ $id }}" @selected(old('delivery_person_id', $sale->delivery_person_id) == $id)>{{ $name }}</option>
+                            <option value="{{ $id }}" @selected(old('delivery_person_id', $doc->delivery_person_id) == $id)>{{ $name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -82,11 +88,11 @@
                         Max file size: {{ round($attachCfg['max_kb'] / 1024) }}MB &middot; Allowed: {{ collect($attachCfg['mimes'])->map(fn ($m) => '.'.$m)->implode(', ') }}
                     </small>
                     <div class="mt-2" id="attachment_list">
-                        @forelse ($sale->exists ? $sale->attachments : [] as $file)
+                        @forelse ($doc->exists ? $doc->attachments : [] as $file)
                             <div class="d-flex align-items-center justify-content-between border rounded px-2 py-1 mb-1 small attachment-row">
                                 <a href="{{ route('attachments.download', $file) }}"><i class="{{ $file->icon }} mr-1"></i>{{ $file->original_name }}</a>
                                 <span class="text-muted ml-2 nowrap">{{ $file->size_label }}
-                                    @can('sales.edit')
+                                    @can($isSale ? 'sales.edit' : 'purchases.edit')
                                         <a href="#" class="text-danger ml-2 btn-remove-attachment" data-href="{{ route('attachments.destroy', $file) }}" title="Remove"><i class="fas fa-times"></i></a>
                                     @endcan
                                 </span>
@@ -116,7 +122,7 @@
                         @endfor
                         </tbody>
                     </table>
-                    <small class="text-muted">Added to the invoice total after tax (e.g. packaging, handling, insurance).</small>
+                    <small class="text-muted">{{ $isSale ? 'Added to the invoice total after tax (e.g. packaging, handling, insurance).' : 'e.g. freight, clearing, handling - added to the purchase total and the landed cost of stock.' }}</small>
                 </div>
             </div>
         </div>
@@ -145,7 +151,7 @@
         });
 
         // default the shipping address / recipient from the chosen customer
-        $('#customer_id').on('select2:select', function (e) {
+        $('#customer_id, #supplier_id').on('select2:select', function (e) {
             var c = e.params.data;
             if (!$.trim($('#shipping_address').val()) && c.address) { $('#shipping_address').val(c.address); }
             if (!$.trim($('#delivered_to').val()) && c.text) { $('#delivered_to').val(c.text); }

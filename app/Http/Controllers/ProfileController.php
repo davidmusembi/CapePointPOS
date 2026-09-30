@@ -19,13 +19,14 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'username' => ['required', 'string', 'min:3', 'max:50', 'regex:/^[A-Za-z0-9._-]+$/', Rule::unique('users', 'username')->ignore($user)],
             'email' => ['required', 'email', Rule::unique('users')->ignore($user)],
             'phone' => ['nullable', 'string', 'max:30'],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'confirmed', Password::min(10)->letters()->mixedCase()->numbers()],
         ]);
 
-        $user->fill(collect($data)->only(['name', 'email', 'phone'])->all());
+        $user->fill(collect($data)->only(['name', 'username', 'email', 'phone'])->all());
         if (! empty($data['password'])) {
             $user->password = Hash::make($data['password']);
         }

@@ -104,11 +104,11 @@
 
     $.extend(true, $.fn.dataTable.defaults, {
         processing: true,
-        responsive: true,
+        responsive: false, // never collapse columns into a (+) child row - all columns incl. Action stay visible
         autoWidth: false,
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, 'All']],
-        dom: '<"row dt-toolbar"<"col-md-3 col-sm-12"l><"col-md-6 col-sm-12 text-center"B><"col-md-3 col-sm-12"f>>rt<"row"<"col-md-5"i><"col-md-7"p>>',
+        dom: '<"row dt-toolbar"<"col-md-3 col-sm-12"l><"col-md-6 col-sm-12 text-center"B><"col-md-3 col-sm-12"f>>r<"dt-scroll"t><"row"<"col-md-5"i><"col-md-7"p>>',
         buttons: APP.dtButtons,
         order: [],
         language: {
@@ -138,6 +138,22 @@
             }
         });
     };
+
+    /*
+     * Action dropdowns inside the horizontally-scrolling table area would be clipped by it, so they open
+     * with a fixed-position popper (above everything) and close when the page or the table scrolls.
+     */
+    $(document).on('show.bs.dropdown', '.dataTables_wrapper .btn-group', function () {
+        var dd = $(this).children('[data-toggle="dropdown"]').data('bs.dropdown');
+        if (dd && dd._config) { dd._config.popperConfig = $.extend({}, dd._config.popperConfig, { positionFixed: true }); }
+    });
+    var closeTableMenus = function () {
+        $('.dataTables_wrapper .btn-group.show > [data-toggle="dropdown"]').dropdown('hide');
+    };
+    $(window).on('scroll resize', closeTableMenus);
+    document.addEventListener('scroll', function (e) {
+        if ($(e.target).is('.dt-scroll')) { closeTableMenus(); }
+    }, true);
 
     APP.reloadTables = function () {
         $('table.dataTable').each(function () {

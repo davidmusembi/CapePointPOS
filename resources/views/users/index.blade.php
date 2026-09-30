@@ -15,7 +15,7 @@
         <div class="card-body">
             <table class="table table-bordered table-striped table-hover w-100" id="users_table">
                 <thead>
-                <tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Last login</th><th class="no-export" style="width:90px">Action</th></tr>
+                <tr><th>Name</th><th>Username</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Last login</th><th class="no-export" style="width:90px">Action</th></tr>
                 </thead>
             </table>
         </div>
@@ -31,6 +31,7 @@
             order: [[0, 'asc']],
             columns: [
                 { data: 'name', name: 'name' },
+                { data: 'username', name: 'username' },
                 { data: 'email', name: 'email' },
                 { data: 'phone', name: 'phone' },
                 { data: 'role', name: 'role', orderable: false },

@@ -81,6 +81,10 @@
                         <tr><td>Subtotal</td><td class="text-right">{{ money($purchase->subtotal) }}</td></tr>
                         <tr><td>Discount</td><td class="text-right text-danger">- {{ money($purchase->discount_amount) }}</td></tr>
                         <tr><td>{{ settings('tax_label', 'Tax') }}</td><td class="text-right">{{ money($purchase->tax_amount) }}</td></tr>
+                        @if ($purchase->shipping_charges > 0)<tr><td>Shipping charges</td><td class="text-right">{{ money($purchase->shipping_charges) }}</td></tr>@endif
+                        @foreach ($purchase->additional_charges ?? [] as $charge)
+                            <tr><td>{{ $charge['name'] }}</td><td class="text-right">{{ money($charge['amount']) }}</td></tr>
+                        @endforeach
                         <tr class="grand"><td>Total</td><td class="text-right">{{ money($purchase->total) }}</td></tr>
                         @if ($purchase->returned_amount > 0)
                             <tr><td>Returned (debit notes)</td><td class="text-right">- {{ money($purchase->returned_amount) }}</td></tr>
@@ -102,6 +106,8 @@
             @endif
         </div>
     </div>
+
+    @include('partials.shipping-panel', ['doc' => $purchase, 'docType' => 'purchase'])
 
     <div class="row">
         <div class="col-lg-7">

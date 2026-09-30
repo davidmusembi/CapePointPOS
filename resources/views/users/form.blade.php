@@ -12,13 +12,22 @@
                 <input type="text" name="name" class="form-control" value="{{ $user->name }}" required>
             </div>
             <div class="form-row">
-                <div class="form-group col-md-7">
-                    <label class="required">Email (login)</label>
-                    <input type="email" name="email" class="form-control" value="{{ $user->email }}" required>
+                <div class="form-group col-md-6">
+                    <label class="required">Username (login)</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-user"></i></span></div>
+                        <input type="text" name="username" class="form-control" value="{{ $user->username }}" required maxlength="50"
+                               pattern="[A-Za-z0-9._\-]{3,50}" title="3-50 characters: letters, numbers, dot, dash or underscore" autocapitalize="none" spellcheck="false">
+                    </div>
+                    <small class="text-muted">Letters, numbers, dot, dash or underscore.</small>
                 </div>
-                <div class="form-group col-md-5">
+                <div class="form-group col-md-6">
                     <label>Phone</label>
                     <input type="text" name="phone" class="form-control" value="{{ $user->phone }}">
+                </div>
+                <div class="form-group col-md-12">
+                    <label class="required">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ $user->email }}" required>
                 </div>
             </div>
             <div class="form-group">

@@ -78,7 +78,9 @@ class PaymentService
     public static function rowRules(): array
     {
         return [
+            'payments_present' => ['nullable', 'in:1'],
             'payments' => ['nullable', 'array', 'max:10'],
+            'payments.*.id' => ['nullable', 'integer'],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'payments.*.paid_on' => ['nullable', 'date', 'before_or_equal:'.now()->addDay()->toDateString()],
             'payments.*.method' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(payment_methods()))],
@@ -105,6 +107,7 @@ class PaymentService
 
         return collect($rows)
             ->map(fn ($r) => [
+                'id' => isset($r['id']) && $r['id'] !== '' ? (int) $r['id'] : null,
                 'amount' => round(max(0, (float) ($r['amount'] ?? 0)), 2),
                 'paid_on' => $r['paid_on'] ?? null,
                 'method' => (string) ($r['method'] ?? array_key_first(payment_methods())),
@@ -146,6 +149,65 @@ class PaymentService
             ], [$document->id => $row['amount']]);
             $document->refresh();
         }
+    }
+
+    /**
+     * Payments captured on this document's own form and allocated only to it - these are editable from the
+     * document. Receipts recorded in the Payments module (possibly spread over several invoices) are not.
+     */
+    public static function editableFor(Sale|Purchase $document): \Illuminate\Support\Collection
+    {
+        return Payment::where('source', 'invoice')
+            ->whereHas('allocations', fn ($q) => $q->where('payable_type', $document->getMorphClass())->where('payable_id', $document->getKey()))
+            ->withCount('allocations')->orderBy('date')->orderBy('id')->get()
+            ->filter(fn (Payment $p) => $p->allocations_count === 1)->values();
+    }
+
+    /**
+     * Apply the payment rows submitted with an edited invoice / purchase:
+     * existing rows are updated, rows removed from the form are deleted, new rows are recorded.
+     */
+    public function syncDocumentPayments(Sale|Purchase $document, array $data): void
+    {
+        DB::transaction(function () use ($document, $data) {
+            $rows = collect(self::rowsFrom(['payments' => $data['payments'] ?? []]));
+            $editable = self::editableFor($document)->keyBy('id');
+            $kept = $rows->pluck('id')->filter()->intersect($editable->keys())->all();
+
+            // 1. payments removed from the form
+            foreach ($editable->except($kept) as $payment) {
+                $payment->allocations()->delete();
+                $payment->delete();
+            }
+
+            // 2. payments edited in place
+            foreach ($rows->whereNotNull('id') as $row) {
+                $payment = $editable[$row['id']] ?? null;
+                if (! $payment) {
+                    continue; // not editable from here (or not ours) - ignore tampered ids
+                }
+                $payment->update([
+                    'date' => $row['paid_on'] ?: $payment->date->toDateString(),
+                    'amount' => $row['amount'],
+                    'method' => $row['method'],
+                    'reference' => $row['reference'],
+                    'notes' => $row['note'],
+                ]);
+                $payment->allocations()->update(['amount' => $row['amount']]);
+            }
+            $document->refreshBalances();
+
+            // 3. new rows
+            $new = $rows->whereNull('id')->values()->all();
+            if ($new) {
+                $this->recordDocumentPayments($document->fresh(), ['payments' => $new]);
+            }
+            $document->refreshBalances();
+
+            if ($document->paid_amount - ($document->total - $document->returned_amount) > 0.009) {
+                throw ValidationException::withMessages(['payments' => 'Payments ('.money($document->paid_amount).') cannot exceed the total of '.money($document->total - $document->returned_amount).'.']);
+            }
+        });
     }
 
     public function delete(Payment $payment): void

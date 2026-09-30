@@ -21,6 +21,7 @@ class UserController extends Controller implements HasMiddleware
     {
         if ($request->ajax()) {
             return DataTables::eloquent(User::query()->with('roles'))
+                ->editColumn('username', fn ($u) => '<code>'.e($u->username).'</code>')
                 ->editColumn('name', fn ($u) => e($u->name).($u->id === auth()->id() ? ' <span class="badge badge-primary">You</span>' : ''))
                 ->addColumn('role', fn ($u) => $u->roles->map(fn ($r) => '<span class="badge badge-info">'.e($r->name).'</span>')->implode(' '))
                 ->editColumn('is_active', fn ($u) => status_badge($u->is_active ? 'active' : 'inactive'))
@@ -30,7 +31,7 @@ class UserController extends Controller implements HasMiddleware
                     $u->id === auth()->id() ? '-' : ['label' => 'Delete', 'delete' => route('users.destroy', $u), 'can' => 'users.delete'],
                 ]))
                 ->filterColumn('role', fn ($q, $k) => $q->whereHas('roles', fn ($r) => $r->where('name', 'like', "%{$k}%")))
-                ->rawColumns(['name', 'role', 'is_active', 'last_login_at', 'action'])
+                ->rawColumns(['name', 'username', 'role', 'is_active', 'last_login_at', 'action'])
                 ->make(true);
         }
 
@@ -115,6 +116,7 @@ class UserController extends Controller implements HasMiddleware
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'username' => ['required', 'string', 'min:3', 'max:50', 'regex:/^[A-Za-z0-9._-]+$/', Rule::unique('users', 'username')->ignore($user)],
             'email' => ['required', 'email', 'max:190', Rule::unique('users')->ignore($user)],
             'phone' => ['nullable', 'string', 'max:30'],
             'role' => ['required', Rule::in($this->assignableRoles()->all())],

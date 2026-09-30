@@ -113,7 +113,8 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     Route::get('delivery-notes/{delivery_note}/print', [DeliveryNoteController::class, 'print'])->name('delivery-notes.print');
     Route::patch('delivery-notes/{delivery_note}/status', [DeliveryNoteController::class, 'updateStatus'])->name('delivery-notes.status');
-    Route::resource('delivery-notes', DeliveryNoteController::class);
+    // Delivery notes are created from the invoice's shipping section only.
+    Route::resource('delivery-notes', DeliveryNoteController::class)->except(['create', 'store']);
 
     /*
     |----------------------------------------------------------------------

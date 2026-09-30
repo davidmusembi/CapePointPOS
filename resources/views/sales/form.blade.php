@@ -105,7 +105,7 @@
             </div>
         </div>
 
-        @include('sales.partials.shipping')
+        @include('partials.shipping', ['doc' => $sale, 'docType' => 'sale'])
 
         <div class="row">
             <div class="col-lg-7">
@@ -118,14 +118,7 @@
                     </div>
                 </div>
 
-                @unless ($editing)
-                    @include('partials.payment-rows', ['title' => 'Add payment', 'hint' => 'Leave the amount at 0 to invoice on credit. Partial and split payments (e.g. cash + mobile money) are allowed.'])
-                @else
-                    <div class="alert alert-light border">
-                        <i class="fas fa-info-circle text-primary mr-1"></i>
-                        Payments already recorded ({{ money($sale->paid_amount) }}) stay allocated to this invoice. Use <strong>Add Payment</strong> from the invoice to record more.
-                    </div>
-                @endunless
+                @include('partials.payment-rows', ['document' => $sale, 'title' => $editing ? 'Payments' : 'Add payment', 'hint' => 'Leave the amount at 0 to invoice on credit. Partial and split payments (e.g. cash + mobile money) are allowed.'])
             </div>
             <div class="col-lg-5">
                 <div class="card">

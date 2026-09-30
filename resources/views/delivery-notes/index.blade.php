@@ -1,12 +1,9 @@
 @extends('layouts.app')
 
 @section('title', 'Delivery Notes')
-@section('page_subtitle', 'Deliveries - created automatically from invoice shipping, or standalone')
+@section('page_subtitle', 'Deliveries - created automatically from each invoice's shipping section')
 
 @section('header_actions')
-    @can('delivery_notes.create')
-        <a href="{{ route('delivery-notes.create') }}" class="btn btn-primary"><i class="fas fa-plus"></i> New Delivery Note</a>
-    @endcan
 @endsection
 
 @section('content')

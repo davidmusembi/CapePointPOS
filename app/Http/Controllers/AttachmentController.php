@@ -15,6 +15,7 @@ class AttachmentController extends Controller
     /** Permission needed per owner type: [view, change]. */
     protected const PERMISSIONS = [
         Sale::class => ['sales.view', 'sales.edit'],
+        \App\Models\Purchase::class => ['purchases.view', 'purchases.edit'],
     ];
 
     public function download(Request $request, Attachment $attachment)

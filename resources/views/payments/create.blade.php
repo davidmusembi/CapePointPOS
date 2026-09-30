@@ -14,11 +14,11 @@
         @csrf
         <input type="hidden" name="party_type" value="{{ $type }}">
 
-        <div class="row">
-            <div class="col-lg-4">
-                <div class="card card-primary card-outline">
-                    <div class="card-header"><h3 class="card-title">Payment details</h3></div>
-                    <div class="card-body">
+        <div class="card card-primary card-outline">
+            <div class="card-header"><h3 class="card-title">{{ $isCustomer ? 'Receive payment' : 'Pay supplier' }}</h3></div>
+            <div class="card-body pb-1">
+                <div class="row">
+                    <div class="col-md-6">
                         <div class="form-group">
                             <label class="required">{{ $isCustomer ? 'Customer' : 'Supplier' }}</label>
                             <select name="{{ $type }}_id" id="party_id" class="form-control" required>
@@ -26,44 +26,23 @@
                                     <option value="{{ $party->id }}" selected>{{ $party->display_name }}</option>
                                 @endif
                             </select>
-                            <div class="mt-2 small" id="party_balance_wrap" style="{{ $party ? '' : 'display:none' }}">
-                                Account balance: <strong id="party_balance">{{ $party ? money($party->balance) : '' }}</strong>
-                            </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group col-6">
-                                <label class="required">Date</label>
-                                <input type="date" name="date" class="form-control" value="{{ old('date', now()->toDateString()) }}" required>
-                            </div>
-                            <div class="form-group col-6">
-                                <label class="required">Method</label>
-                                <select name="method" class="form-control custom-select" required>
-                                    @foreach (payment_methods() as $key => $label)
-                                        <option value="{{ $key }}" @selected(old('method', 'bank') === $key)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
+                    </div>
+                    <div class="col-md-6">
                         <div class="form-group">
-                            <label class="required">Amount</label>
-                            <div class="input-group">
-                                <div class="input-group-prepend"><span class="input-group-text">{{ settings('currency_symbol') }}</span></div>
-                                <input type="number" step="0.01" min="0.01" name="amount" id="amount" class="form-control form-control-lg text-right font-weight-600" value="{{ old('amount') }}" required>
+                            <label>Account balance</label>
+                            <div class="form-control-plaintext font-weight-bold" id="party_balance_wrap">
+                                <span id="party_balance">{{ $party ? money($party->balance) : '-' }}</span>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Transaction reference</label>
-                            <input type="text" name="reference" class="form-control" value="{{ old('reference') }}" placeholder="Bank ref / mobile money code / cheque no.">
-                        </div>
-                        <div class="form-group mb-0">
-                            <label>Notes</label>
-                            <textarea name="notes" rows="2" class="form-control">{{ old('notes') }}</textarea>
                         </div>
                     </div>
                 </div>
+                <x-payment-fields dateField="date" noteField="notes" amountId="amount" :required="true" :values="['method' => old('method', 'bank')]" />
             </div>
+        </div>
 
-            <div class="col-lg-8">
+        <div class="row">
+            <div class="col-12">
                 <div class="card card-teal card-outline">
                     <div class="card-header">
                         <h3 class="card-title">Allocate to {{ $isCustomer ? 'invoices' : 'purchases' }}</h3>

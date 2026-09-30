@@ -21,7 +21,7 @@ class ProductController extends Controller implements HasMiddleware
     {
         return array_merge(
             static::crudPermissions('products', ['view' => ['lowStock', 'stockHistory']]),
-            [new Middleware('permission:products.view|sales.create|sales.edit|purchases.create|purchases.edit|purchase_orders.create|purchase_orders.edit|stock_adjustments.create|delivery_notes.create|delivery_notes.edit', only: ['search'])],
+            [new Middleware('permission:products.view|sales.create|sales.edit|purchases.create|purchases.edit|purchase_orders.create|purchase_orders.edit|stock_adjustments.create|delivery_notes.edit', only: ['search'])],
         );
     }
 

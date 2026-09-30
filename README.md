@@ -33,14 +33,14 @@ php artisan serve               # http://127.0.0.1:8000
 
 Reset with fresh demo data: `php artisan migrate:fresh --seed`.
 
-### Demo logins (password: `password`)
+### Demo logins (sign in with the **username**; password: `password`)
 
-| Role | Email | Access |
+| Role | Username | Access |
 |---|---|---|
-| Admin | admin@capepoint.test | Everything (bypasses permission checks) |
-| Manager | manager@capepoint.test | All operations and reports; no settings, users or roles |
-| Accountant | accountant@capepoint.test | Payments, expenses, reports; read-only on sales, purchases and stock |
-| Viewer | viewer@capepoint.test | Read-only on all modules and reports |
+| Admin | `admin` | Everything (bypasses permission checks) |
+| Manager | `manager` | All operations and reports; no settings, users or roles |
+| Accountant | `accountant` | Payments, expenses, reports; read-only on sales, purchases and stock |
+| Viewer | `viewer` | Read-only on all modules and reports |
 
 Change these passwords before any real use. Roles are editable under **Settings → Roles & Permissions**. Defaults live in `config/pos.php`.
 

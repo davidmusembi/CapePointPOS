@@ -15,7 +15,7 @@
         </div>
     @endif
 
-    <form id="doc-form" action="{{ $purchase->exists ? route('purchases.update', $purchase) : route('purchases.store') }}" method="POST">
+    <form id="doc-form" action="{{ $purchase->exists ? route('purchases.update', $purchase) : route('purchases.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         @if ($purchase->exists) @method('PUT') @endif
         @if ($order)
@@ -77,7 +77,9 @@
             </div>
         </div>
 
-        @include('purchases._items', ['discountType' => $purchase->discount_type ?? 'fixed', 'discountValue' => $purchase->discount_value ?? 0, 'notes' => $purchase->notes, 'withPayment' => ! $purchase->exists])
+        @include('partials.shipping', ['doc' => $purchase, 'docType' => 'purchase'])
+
+        @include('purchases._items', ['discountType' => $purchase->discount_type ?? 'fixed', 'discountValue' => $purchase->discount_value ?? 0, 'notes' => $purchase->notes, 'withPayment' => true, 'withShipping' => true, 'document' => $purchase])
 
         <div class="text-right mb-4">
             <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> {{ $purchase->exists ? 'Update Purchase' : 'Save Purchase' }}</button>

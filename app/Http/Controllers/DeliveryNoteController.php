@@ -80,59 +80,6 @@ class DeliveryNoteController extends Controller implements HasMiddleware
         return $items;
     }
 
-    public function create(Request $request)
-    {
-        $sale = $request->sale_id ? Sale::with(['customer', 'items.product.unit', 'shippingNote'])->find($request->sale_id) : null;
-
-        // An invoice with shipping already has its delivery note - open that instead of creating a duplicate.
-        if ($sale?->shippingNote) {
-            return redirect()->route('delivery-notes.show', $sale->shippingNote)
-                ->with('info', "Invoice {$sale->invoice_no} already has delivery note {$sale->shippingNote->delivery_no} (managed from the invoice's shipping section).");
-        }
-
-        $note = new DeliveryNote(['date' => now(), 'status' => DeliveryNote::defaultStatus()]);
-        $items = [];
-
-        if ($sale) {
-            $c = $sale->customer;
-            $note->fill([
-                'sale_id' => $sale->id,
-                'customer_id' => $sale->customer_id,
-                'delivery_address' => $sale->shipping_address ?: collect([$c->address, $c->city])->filter()->implode(', '),
-                'contact_person' => $sale->delivered_to ?: $c->name,
-                'contact_phone' => $c->phone,
-                'delivery_person_id' => $sale->delivery_person_id,
-            ]);
-            $items = $sale->items->map(fn ($i) => $this->itemRow($i->product, $i->description, $i->quantity - $i->returned_quantity))
-                ->filter(fn ($r) => $r['quantity'] > 0)->values()->all();
-        }
-
-        return view('delivery-notes.form', [
-            'note' => $note,
-            'sale' => $sale,
-            'customer' => $sale?->customer ?? ($request->customer_id ? Customer::find($request->customer_id) : null),
-            'items' => $items,
-            'deliveryPeople' => $this->deliveryPeople(),
-        ]);
-    }
-
-    public function store(Request $request)
-    {
-        $data = $this->validated($request);
-
-        $note = DB::transaction(function () use ($data) {
-            $note = DeliveryNote::create(collect($data)->except('items')->all() + [
-                'delivery_no' => ReferenceService::next('delivery_note'),
-                'driver_name' => $this->personName($data['delivery_person_id'] ?? null, $data['driver_name'] ?? null),
-            ]);
-            $this->syncItems($note, $data['items']);
-
-            return $note;
-        });
-
-        return redirect()->route('delivery-notes.show', $note)->with('success', "Delivery note {$note->delivery_no} created successfully");
-    }
-
     public function show(DeliveryNote $deliveryNote)
     {
         $deliveryNote->load(['sale', 'customer', 'items.product.unit', 'creator', 'deliveryPerson']);

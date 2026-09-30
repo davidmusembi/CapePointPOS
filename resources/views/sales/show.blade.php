@@ -17,9 +17,6 @@
             @can('sale_returns.create')
                 <a href="{{ route('sale-returns.create', ['sale_id' => $sale->id]) }}" class="dropdown-item"><i class="fas fa-undo-alt"></i> Sales Return</a>
             @endcan
-            @can('delivery_notes.create')
-                <a href="{{ route('delivery-notes.create', ['sale_id' => $sale->id]) }}" class="dropdown-item"><i class="fas fa-shipping-fast"></i> Create Delivery Note</a>
-            @endcan
             @if ($sale->returns->isEmpty())
                 @can('sales.edit')
                     <a href="{{ route('sales.edit', $sale) }}" class="dropdown-item"><i class="fas fa-edit"></i> Edit</a>

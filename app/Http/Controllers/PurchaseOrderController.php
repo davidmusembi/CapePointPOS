@@ -32,7 +32,7 @@ class PurchaseOrderController extends Controller implements HasMiddleware
 
             $totals = ['total' => (float) (clone $base)->sum('total')];
 
-            $query = (clone $base)->with(['supplier', 'creator'])->withCount(['items', 'purchases'])->select('purchase_orders.*');
+            $query = (clone $base)->select('purchase_orders.*')->with(['supplier', 'creator'])->withCount(['items', 'purchases']);
 
             return DataTables::eloquent($query)
                 ->editColumn('date', fn ($o) => format_date($o->date))

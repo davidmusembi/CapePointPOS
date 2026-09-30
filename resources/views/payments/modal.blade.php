@@ -34,43 +34,9 @@
                     </div>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="required">Amount</label>
-                        <input type="number" step="0.01" min="0.01" max="{{ $document->due_amount }}" name="amount" id="single_amount" class="form-control text-right font-weight-600" value="{{ number_format($document->due_amount, 2, '.', '') }}" required>
-                        <input type="hidden" name="allocations[{{ $document->id }}]" id="single_alloc" value="{{ number_format($document->due_amount, 2, '.', '') }}">
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="required">Paid on</label>
-                        <input type="date" name="date" class="form-control" value="{{ now()->toDateString() }}" required>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="required">Payment method</label>
-                        <select name="method" class="form-control custom-select" required>
-                            @foreach (payment_methods() as $key => $label)
-                                <option value="{{ $key }}">{{ $label }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label>Transaction reference</label>
-                        <input type="text" name="reference" class="form-control" placeholder="Bank ref / mobile money code / cheque no.">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group mb-0">
-                        <label>Notes</label>
-                        <input type="text" name="notes" class="form-control" value="Payment for {{ $document->reference }}">
-                    </div>
-                </div>
-            </div>
+            <x-payment-fields dateField="date" noteField="notes" amountId="single_amount" :amountMax="$document->due_amount" :required="true"
+                :values="['amount' => number_format($document->due_amount, 2, '.', ''), 'notes' => 'Payment for '.$document->reference]" />
+            <input type="hidden" name="allocations[{{ $document->id }}]" id="single_alloc" value="{{ number_format($document->due_amount, 2, '.', '') }}">
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>

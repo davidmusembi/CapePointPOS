@@ -64,14 +64,16 @@ class SettingsSeeder extends Seeder
             ExpenseCategory::firstOrCreate(['name' => $name]);
         }
 
+        // Demo accounts (sign in with the username; password "password")
         $users = [
-            ['Administrator', 'admin@capepoint.test', 'Admin'],
-            ['Mary Manager', 'manager@capepoint.test', 'Manager'],
-            ['Alex Accountant', 'accountant@capepoint.test', 'Accountant'],
-            ['Victor Viewer', 'viewer@capepoint.test', 'Viewer'],
+            ['Administrator', 'admin', 'admin@capepoint.test', 'Admin'],
+            ['Mary Manager', 'manager', 'manager@capepoint.test', 'Manager'],
+            ['Alex Accountant', 'accountant', 'accountant@capepoint.test', 'Accountant'],
+            ['Victor Viewer', 'viewer', 'viewer@capepoint.test', 'Viewer'],
         ];
-        foreach ($users as [$name, $email, $role]) {
-            $user = User::firstOrCreate(['email' => $email], [
+        foreach ($users as [$name, $username, $email, $role]) {
+            $user = User::firstOrCreate(['username' => $username], [
+                'email' => $email,
                 'name' => $name,
                 'password' => 'password',
                 'is_active' => true,

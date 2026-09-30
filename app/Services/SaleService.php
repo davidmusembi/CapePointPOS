@@ -52,6 +52,11 @@ class SaleService
             $sale->items()->delete();
             $this->fill($sale, $data, $originalCosts);
 
+            // Payment rows edited on the invoice form (added / changed / removed)
+            if (! empty($data['payments_present'])) {
+                $this->payments->syncDocumentPayments($sale, $data);
+            }
+
             $allocated = round((float) $sale->allocations()->sum('amount'), 2);
             if ($allocated - $sale->total > 0.009) {
                 throw ValidationException::withMessages(['items' => 'The invoice total ('.money($sale->total).') cannot be less than the payments already allocated to it ('.money($allocated).'). Remove or reduce those payments first.']);
@@ -210,6 +215,32 @@ class SaleService
                 'quantity' => $item->quantity,
             ]);
         }
+    }
+
+    /** Validation rules for the shipping section (shared by sales invoices and purchases). */
+    public static function shippingRules(): array
+    {
+        return [
+            'shipping_details' => ['nullable', 'string', 'max:2000'],
+            'shipping_address' => ['nullable', 'string', 'max:1000'],
+            'shipping_charges' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'shipping_status' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(shipping_statuses()))],
+            'delivered_to' => ['nullable', 'string', 'max:190'],
+            'delivery_person_id' => ['nullable', \Illuminate\Validation\Rule::exists('users', 'id')],
+            'additional_charges' => ['nullable', 'array', 'max:20'],
+            'additional_charges.*.name' => ['nullable', 'string', 'max:120'],
+            'additional_charges.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'shipping_documents' => ['nullable', 'array', 'max:'.(int) config('pos.attachments.max_files', 10)],
+            'shipping_documents.*' => AttachmentService::rules(),
+        ];
+    }
+
+    public static function shippingMessages(): array
+    {
+        return [
+            'shipping_documents.*.mimes' => 'Shipping documents must be one of: '.implode(', ', config('pos.attachments.mimes')).'.',
+            'shipping_documents.*.max' => 'Each shipping document may not be larger than '.round(config('pos.attachments.max_kb') / 1024).' MB.',
+        ];
     }
 
     /** Clean "additional expense" rows: keep rows with an amount; unnamed rows get a generic label. */

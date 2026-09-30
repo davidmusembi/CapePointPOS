@@ -28,11 +28,11 @@
             <form action="{{ route('login') }}" method="POST">
                 @csrf
                 <div class="form-group">
-                    <label for="email">Email address</label>
+                    <label for="username">Username</label>
                     <div class="input-group">
-                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-envelope"></i></span></div>
-                        <input type="email" id="email" name="email" value="{{ old('email') }}" class="form-control @error('email') is-invalid @enderror" placeholder="you@company.com" required autofocus>
-                        @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div class="input-group-prepend"><span class="input-group-text"><i class="fas fa-user"></i></span></div>
+                        <input type="text" id="username" name="username" value="{{ old('username') }}" class="form-control @error('username') is-invalid @enderror" placeholder="Your username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="50" required autofocus>
+                        @error('username')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
                 <div class="form-group">

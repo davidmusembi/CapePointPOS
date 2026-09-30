@@ -7,7 +7,11 @@ use App\Models\Purchase;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\TaxRate;
+use App\Models\User;
+use App\Services\AttachmentService;
+use App\Services\PaymentService;
 use App\Services\PurchaseService;
+use App\Services\SaleService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controllers\HasMiddleware;
 use Illuminate\Validation\ValidationException;
@@ -34,7 +38,7 @@ class PurchaseController extends Controller implements HasMiddleware
             $totals = (clone $base)->selectRaw('COALESCE(SUM(total),0) total, COALESCE(SUM(paid_amount),0) paid, COALESCE(SUM(returned_amount),0) returned, COALESCE(SUM(due_amount),0) due')
                 ->first()->toArray();
 
-            $query = (clone $base)->with(['supplier', 'purchaseOrder', 'creator'])->withCount('returns')->select('purchases.*');
+            $query = (clone $base)->select('purchases.*')->with(['supplier', 'purchaseOrder', 'creator'])->withCount('returns');
 
             return DataTables::eloquent($query)
                 ->editColumn('date', fn ($p) => format_date($p->date))
@@ -110,13 +114,14 @@ class PurchaseController extends Controller implements HasMiddleware
         } catch (ValidationException $e) {
             return back()->withInput()->withErrors($e->errors());
         }
+        app(AttachmentService::class)->storeMany($purchase, $request->file('shipping_documents', []), 'shipping');
 
         return redirect()->route('purchases.show', $purchase)->with('success', "Purchase {$purchase->purchase_no} saved and stock updated");
     }
 
     public function show(Purchase $purchase)
     {
-        $purchase->load(['supplier', 'purchaseOrder', 'items.product.unit', 'returns.creator', 'allocations.payment', 'creator']);
+        $purchase->load(['supplier', 'purchaseOrder', 'items.product.unit', 'returns.creator', 'allocations.payment', 'creator', 'deliveryPerson', 'attachments']);
 
         return view('purchases.show', compact('purchase'));
     }
@@ -142,6 +147,7 @@ class PurchaseController extends Controller implements HasMiddleware
         } catch (ValidationException $e) {
             return back()->withInput()->withErrors($e->errors());
         }
+        app(AttachmentService::class)->storeMany($purchase, $request->file('shipping_documents', []), 'shipping');
 
         return redirect()->route('purchases.show', $purchase)->with('success', "Purchase {$purchase->purchase_no} updated");
     }
@@ -192,6 +198,8 @@ class PurchaseController extends Controller implements HasMiddleware
             'items' => $items,
             'supplier' => $supplierId ? Supplier::find($supplierId) : null,
             'taxRates' => TaxRate::orderBy('name')->get(['name', 'rate']),
+            'deliveryPeople' => User::where(fn ($q) => $q->where('is_active', true)->when($purchase->delivery_person_id, fn ($w) => $w->orWhere('id', $purchase->delivery_person_id)))
+                ->orderBy('name')->pluck('name', 'id'),
         ];
     }
 
@@ -215,10 +223,8 @@ class PurchaseController extends Controller implements HasMiddleware
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
-        if ($creating) {
-            $rules += \App\Services\PaymentService::rowRules();
-        }
+        $rules += PaymentService::rowRules() + SaleService::shippingRules();
 
-        return $request->validate($rules, ['items.required' => 'Add at least one product.']);
+        return $request->validate($rules, ['items.required' => 'Add at least one product.'] + SaleService::shippingMessages());
     }
 }

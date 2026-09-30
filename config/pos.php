@@ -35,7 +35,7 @@ return [
             'sales.view' => 'View sales invoices', 'sales.create' => 'Create sales invoices', 'sales.edit' => 'Edit sales invoices',
             'sales.delete' => 'Delete sales invoices',
             'sale_returns.view' => 'View sales returns', 'sale_returns.create' => 'Create sales returns', 'sale_returns.delete' => 'Delete sales returns',
-            'delivery_notes.view' => 'View delivery notes', 'delivery_notes.create' => 'Create delivery notes',
+            'delivery_notes.view' => 'View delivery notes',
             'delivery_notes.edit' => 'Edit delivery notes', 'delivery_notes.delete' => 'Delete delivery notes',
         ],
         'Purchases' => [

@@ -64,7 +64,7 @@
             APP.initDateRange('#date_range', RPT.reload);
             $('#filters_form').on('change', 'select, input:not(.date-range-input)', RPT.reload);
             $('a[data-toggle="tab"]').on('shown.bs.tab', function () {
-                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust().responsive.recalc();
+                $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
             });
         }
     };

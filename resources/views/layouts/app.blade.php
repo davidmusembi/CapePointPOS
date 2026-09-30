@@ -13,7 +13,6 @@
     <link rel="stylesheet" href="{{ asset('vendor/adminlte/adminlte.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/datatables/css/dataTables.bootstrap4.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/datatables/css/buttons.bootstrap4.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/datatables/css/responsive.bootstrap4.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/select2/select2.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/select2/select2-bootstrap4.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/daterangepicker/daterangepicker.css') }}">
@@ -85,8 +84,6 @@
 <script src="{{ asset('vendor/datatables/js/buttons.html5.min.js') }}"></script>
 <script src="{{ asset('vendor/datatables/js/buttons.print.min.js') }}"></script>
 <script src="{{ asset('vendor/datatables/js/buttons.colVis.min.js') }}"></script>
-<script src="{{ asset('vendor/datatables/js/dataTables.responsive.min.js') }}"></script>
-<script src="{{ asset('vendor/datatables/js/responsive.bootstrap4.min.js') }}"></script>
 <script src="{{ asset('vendor/select2/select2.full.min.js') }}"></script>
 <script src="{{ asset('vendor/moment/moment.min.js') }}"></script>
 <script src="{{ asset('vendor/daterangepicker/daterangepicker.js') }}"></script>

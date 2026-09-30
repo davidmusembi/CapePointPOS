@@ -93,7 +93,7 @@
 <script>
     $(function () {
         APP.initDateRange('#date_range');
-        $('#statement_table').DataTable({ ordering: false, pageLength: -1, responsive: true });
+        $('#statement_table').DataTable({ ordering: false, pageLength: -1 });
     });
 </script>
 @endpush

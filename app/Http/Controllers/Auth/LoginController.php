@@ -16,19 +16,22 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $data = $request->validate([
+            'username' => ['required', 'string', 'max:50'],
             'password' => ['required', 'string'],
         ]);
 
+        // Usernames are matched case-insensitively (stored lower-case).
+        $credentials = ['username' => mb_strtolower(trim($data['username'])), 'password' => $data['password']];
+
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
-            throw ValidationException::withMessages(['email' => 'These credentials do not match our records.']);
+            throw ValidationException::withMessages(['username' => 'These credentials do not match our records.']);
         }
 
         $user = Auth::user();
         if (! $user->is_active) {
             Auth::logout();
-            throw ValidationException::withMessages(['email' => 'Your account has been deactivated. Contact the administrator.']);
+            throw ValidationException::withMessages(['username' => 'Your account has been deactivated. Contact the administrator.']);
         }
 
         $request->session()->regenerate();

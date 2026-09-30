@@ -288,3 +288,9 @@ label { font-weight: 600 !important; font-size: .82rem; color: #344054; margin-b
 .notif-dot { position: absolute; right: 1rem; top: 1rem; width: 10px; height: 10px; border-radius: 50%; background: #dc2626; border: 0; padding: 0; cursor: pointer; }
 .notif-dot:hover { box-shadow: 0 0 0 4px rgba(220,38,38,.18); }
 .notif-empty { text-align: center; color: var(--cp-muted); padding: 2rem 1rem; font-size: .85rem; }
+
+/* ---- DataTables: no collapsing (+) rows; wide tables scroll horizontally ---- */
+.dataTables_wrapper .dt-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: .5rem 0; }
+.dataTables_wrapper .dt-scroll table.dataTable { margin: 0 !important; }
+.dataTables_wrapper .dt-scroll td, .dataTables_wrapper .dt-scroll th { white-space: nowrap; }
+.dataTables_wrapper .dt-scroll td.wrap, .dataTables_wrapper .dt-scroll td .wrap { white-space: normal; }

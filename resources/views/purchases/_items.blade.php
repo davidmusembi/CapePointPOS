@@ -59,12 +59,16 @@
                     <tr><td>Subtotal (excl. tax)</td><td class="text-right" id="subtotal_text">0.00</td></tr>
                     <tr><td>Discount</td><td class="text-right text-danger" id="discount_text">0.00</td></tr>
                     <tr><td>{{ settings('tax_label', 'Tax') }}</td><td class="text-right" id="tax_text">0.00</td></tr>
+                    @if (! empty($withShipping))
+                        <tr><td>Shipping charges</td><td class="text-right" id="shipping_text">0.00</td></tr>
+                        <tr><td>Additional expenses</td><td class="text-right" id="charges_text">0.00</td></tr>
+                    @endif
                     <tr class="grand"><td>Total</td><td class="text-right" id="total_text">0.00</td></tr>
                 </table>
             </div>
         </div>
         @if (! empty($withPayment))
-            @include('partials.payment-rows', ['title' => 'Payment to supplier', 'hint' => 'Leave the amount at 0 to record the purchase on credit. Split payments across methods by adding rows.'])
+            @include('partials.payment-rows', ['document' => $document ?? null, 'title' => 'Payment to supplier', 'hint' => 'Leave the amount at 0 to record the purchase on credit. Split payments across methods by adding rows.'])
         @endif
     </div>
 </div>

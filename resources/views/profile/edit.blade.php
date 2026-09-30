@@ -16,6 +16,10 @@
                             <input type="text" name="name" class="form-control" value="{{ old('name', $user->name) }}" required>
                         </div>
                         <div class="form-group">
+                            <label class="required">Username (login)</label>
+                            <input type="text" name="username" class="form-control" value="{{ old('username', $user->username) }}" required maxlength="50" autocapitalize="none" spellcheck="false">
+                        </div>
+                        <div class="form-group">
                             <label class="required">Email</label>
                             <input type="email" name="email" class="form-control" value="{{ old('email', $user->email) }}" required>
                         </div>
