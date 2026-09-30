@@ -11,7 +11,7 @@ class SystemAlert extends Notification
 {
     /**
      * @param  string  $key  de-duplication key, e.g. "low_stock:12"
-     * @param  string  $type  low_stock | out_of_stock | invoice_overdue | bill_overdue | payment_received | payment_made
+     * @param  string  $type  low_stock | out_of_stock
      */
     public function __construct(
         public string $key,

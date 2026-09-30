@@ -70,8 +70,6 @@ class PaymentService
                 $payables[$id]->refreshBalances();
             }
 
-            app(NotificationService::class)->paymentReceived($payment);
-
             return $payment;
         });
     }

@@ -416,18 +416,20 @@
         function init() {
             $menu = $('#notif_menu');
             if (!$menu.length) { return; }
+            // Clicks inside the panel don't bubble past it (keeps the dropdown open), so bind there.
+            var $panel = $menu.find('.notif-panel');
             $menu.on('show.bs.dropdown', load);
-            $menu.on('click', '.notif-tabs a', function (e) {
+            $panel.on('click', '.notif-tabs a', function (e) {
                 e.preventDefault();
                 filter = $(this).data('filter');
                 $(this).addClass('active').siblings().removeClass('active');
                 load();
             });
-            $menu.on('click', '.notif-read-all', function (e) {
+            $panel.on('click', '.notif-read-all', function (e) {
                 e.preventDefault();
                 $.post($menu.data('read-all'), function () { setCount(0); load(); });
             });
-            $menu.on('click', '.notif-dot', function (e) {
+            $panel.on('click', '.notif-dot', function (e) {
                 e.stopPropagation();
                 var $item = $(this).closest('.notif-item');
                 markRead($item.data('id'), function () {
@@ -435,7 +437,7 @@
                     else { $item.removeClass('unread').find('.notif-dot').remove(); }
                 });
             });
-            $menu.on('click', '.notif-item', function () {
+            $panel.on('click', '.notif-item', function () {
                 var url = $(this).data('url');
                 markRead($(this).data('id'), function () { if (url) { window.location = url; } });
             });

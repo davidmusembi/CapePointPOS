@@ -14,14 +14,11 @@ class NotificationController extends Controller
     public const ICONS = [
         'low_stock' => ['fas fa-box-open', 'amber'],
         'out_of_stock' => ['fas fa-exclamation-triangle', 'red'],
-        'invoice_overdue' => ['fas fa-file-invoice-dollar', 'red'],
-        'bill_overdue' => ['fas fa-file-invoice', 'violet'],
-        'payment_received' => ['fas fa-hand-holding-usd', 'teal'],
     ];
 
     public function index(Request $request, NotificationService $service)
     {
-        $service->syncOverdue();
+        $service->syncLowStock();
         $user = $request->user();
         $filter = $request->input('filter') === 'all' ? 'all' : 'unread';
 
@@ -60,8 +57,8 @@ class NotificationController extends Controller
             'title' => (string) ($n->data['title'] ?? 'Notification'),
             'message' => (string) ($n->data['message'] ?? ''),
             'context' => (string) ($n->data['context'] ?? ''),
-            // only same-site links are followed from the panel
-            'url' => $url && str_starts_with($url, url('/')) ? $url : null,
+            // rebuild on the current host from the stored path only (works after domain changes; never off-site)
+            'url' => $url ? url(ltrim((string) parse_url($url, PHP_URL_PATH), '/')) : null,
             'icon' => $icon,
             'tone' => $tone,
             'read' => $n->read_at !== null,
