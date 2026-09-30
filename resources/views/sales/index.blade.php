@@ -31,6 +31,18 @@
         </div>
         <div class="col-md-3">
             <div class="form-group">
+                <label>Shipping status</label>
+                <select name="shipping_status" class="form-control custom-select">
+                    <option value="">All</option>
+                    @foreach (shipping_statuses() as $key => $label)
+                        <option value="{{ $key }}">{{ $label }}</option>
+                    @endforeach
+                    <option value="none">No shipping</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="form-group">
                 <label class="d-block">&nbsp;</label>
                 <div class="custom-control custom-checkbox mt-2">
                     <input type="checkbox" class="custom-control-input" id="filter_overdue" name="overdue" value="1">

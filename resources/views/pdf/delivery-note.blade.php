@@ -26,7 +26,7 @@
                         <tr><td class="label">Date</td><td>{{ format_date($note->date) }}</td></tr>
                         <tr><td class="label">Invoice No</td><td>{{ $note->sale->invoice_no ?? '-' }}</td></tr>
                         @if ($note->sale?->customer_reference)<tr><td class="label">Customer PO</td><td>{{ $note->sale->customer_reference }}</td></tr>@endif
-                        <tr><td class="label">Driver</td><td>{{ $note->driver_name ?: '-' }}</td></tr>
+                        <tr><td class="label">Driver</td><td>{{ ($note->deliveryPerson?->name ?? $note->driver_name) ?: '-' }}</td></tr>
                         <tr><td class="label">Vehicle</td><td>{{ $note->vehicle_no ?: '-' }}</td></tr>
                     </table>
                 </div>

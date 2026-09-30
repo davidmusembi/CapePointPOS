@@ -12,7 +12,7 @@
 @endsection
 
 @section('content')
-    <form id="doc-form" action="{{ $editing ? route('sales.update', $sale) : route('sales.store') }}" method="POST" class="no-lock">
+    <form id="doc-form" action="{{ $editing ? route('sales.update', $sale) : route('sales.store') }}" method="POST" class="no-lock" enctype="multipart/form-data">
         @csrf
         @if ($editing) @method('PUT') @endif
 
@@ -105,6 +105,8 @@
             </div>
         </div>
 
+        @include('sales.partials.shipping')
+
         <div class="row">
             <div class="col-lg-7">
                 <div class="card">
@@ -117,43 +119,7 @@
                 </div>
 
                 @unless ($editing)
-                    <div class="payment-panel mb-3">
-                        <div class="form-section-title"><i class="fas fa-money-bill-wave mr-1"></i> Payment</div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="payment_method">Payment method</label>
-                                    <select name="payment_method" id="payment_method" class="form-control custom-select">
-                                        @foreach (payment_methods(true) as $key => $label)
-                                            <option value="{{ $key }}" @selected(old('payment_method', 'cash') === $key)>{{ $label }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4 payment-fields">
-                                <div class="form-group">
-                                    <label for="payment_amount">Amount paid</label>
-                                    <div class="input-group">
-                                        <input type="number" step="any" min="0" name="payment_amount" id="payment_amount" class="form-control" value="{{ old('payment_amount', 0) }}">
-                                        <div class="input-group-append">
-                                            <button type="button" class="btn btn-teal" id="btn_pay_full" title="Pay full amount">Full</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4 payment-fields">
-                                <div class="form-group">
-                                    <label for="payment_reference">Reference</label>
-                                    <input type="text" name="payment_reference" id="payment_reference" class="form-control" placeholder="Mobile money / bank ref" value="{{ old('payment_reference') }}">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span>Balance after payment: <strong id="balance_text">-</strong></span>
-                            <span>Status: <span id="payment_status_preview" class="badge badge-pill badge-danger">Due</span></span>
-                        </div>
-                        <small class="text-muted d-block mt-1">Leave the amount at 0 or choose "Credit" to invoice on account. Partial amounts are allowed.</small>
-                    </div>
+                    @include('partials.payment-rows', ['title' => 'Add payment', 'hint' => 'Leave the amount at 0 to invoice on credit. Partial and split payments (e.g. cash + mobile money) are allowed.'])
                 @else
                     <div class="alert alert-light border">
                         <i class="fas fa-info-circle text-primary mr-1"></i>
@@ -185,6 +151,14 @@
                             <tr>
                                 <td>{{ settings('tax_label', 'Tax') }} <small class="text-muted">(on discounted amount)</small></td>
                                 <td class="text-right" id="tax_text">0.00</td>
+                            </tr>
+                            <tr class="charges-row">
+                                <td>Shipping charges</td>
+                                <td class="text-right" id="shipping_text">0.00</td>
+                            </tr>
+                            <tr class="charges-row">
+                                <td>Additional expenses</td>
+                                <td class="text-right" id="charges_text">0.00</td>
                             </tr>
                             <tr class="grand">
                                 <td>Invoice Total</td>

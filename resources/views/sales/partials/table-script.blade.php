@@ -12,6 +12,7 @@
             { data: 'returned_amount', name: 'sales.returned_amount', className: 'text-right', searchable: false },
             { data: 'due_amount', name: 'sales.due_amount', className: 'text-right', searchable: false },
             { data: 'payment_status', name: 'sales.payment_status', className: 'text-center', searchable: false },
+            { data: 'shipping_status', name: 'sales.shipping_status', className: 'text-center', searchable: false },
             { data: 'due_date', name: 'sales.due_date', searchable: false }
         ];
         @if ($withOverdue)

@@ -9,6 +9,7 @@
         <th>Returned</th>
         <th>Due</th>
         <th>Status</th>
+        <th>Shipping</th>
         <th>Due Date</th>
         @if ($withOverdue)<th>Overdue</th>@endif
         <th>Added By</th>
@@ -22,6 +23,7 @@
         <th class="text-right" data-total="paid"></th>
         <th class="text-right" data-total="returned"></th>
         <th class="text-right" data-total="due"></th>
+        <th></th>
         <th></th>
         <th></th>
         @if ($withOverdue)<th></th>@endif

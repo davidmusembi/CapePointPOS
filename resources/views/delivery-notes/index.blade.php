@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Delivery Notes')
-@section('page_subtitle', 'Goods dispatched to customers')
+@section('page_subtitle', 'Deliveries - created automatically from invoice shipping, or standalone')
 
 @section('header_actions')
     @can('delivery_notes.create')
@@ -23,7 +23,7 @@
                 <label>Status</label>
                 <select name="status" class="form-control custom-select">
                     <option value="">All</option>
-                    @foreach (\App\Models\DeliveryNote::STATUSES as $key => $label)
+                    @foreach (\App\Models\DeliveryNote::statuses() as $key => $label)
                         <option value="{{ $key }}">{{ $label }}</option>
                     @endforeach
                 </select>

@@ -7,11 +7,16 @@
     <a href="{{ route('delivery-notes.print', $note) }}" target="_blank" class="btn btn-default btn-sm"><i class="fas fa-print"></i> Print</a>
     <a href="{{ route('delivery-notes.print', [$note, 'download' => 1]) }}" class="btn btn-default btn-sm"><i class="far fa-file-pdf"></i> PDF</a>
     @can('delivery_notes.edit')
-        @if ($note->status === 'pending')
-            <a href="#" class="btn btn-sm btn-light-primary btn-confirm" data-href="{{ route('delivery-notes.status', [$note, 'status' => 'dispatched']) }}" data-method="PATCH" data-reload="page" data-message="Mark as dispatched?"><i class="fas fa-truck"></i> Dispatched</a>
-        @endif
-        @if (in_array($note->status, ['pending', 'dispatched']))
-            <a href="#" class="btn btn-sm btn-teal btn-confirm" data-href="{{ route('delivery-notes.status', [$note, 'status' => 'delivered']) }}" data-method="PATCH" data-reload="page" data-message="Mark as delivered?"><i class="fas fa-check-circle"></i> Delivered</a>
+        @if (! in_array($note->status, ['delivered', 'cancelled'], true))
+            <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-teal dropdown-toggle" data-toggle="dropdown"><i class="fas fa-truck"></i> Update status</button>
+                <div class="dropdown-menu dropdown-menu-right">
+                    @foreach (\App\Models\DeliveryNote::statuses() as $key => $label)
+                        @continue($key === $note->status)
+                        <a href="#" class="dropdown-item btn-confirm" data-href="{{ route('delivery-notes.status', [$note, 'status' => $key]) }}" data-method="PATCH" data-reload="page" data-message="Mark {{ $note->delivery_no }} as {{ $label }}?">{{ $label }}</a>
+                    @endforeach
+                </div>
+            </div>
         @endif
         <a href="{{ route('delivery-notes.edit', $note) }}" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> Edit</a>
     @endcan
@@ -32,10 +37,10 @@
                 </div>
                 <dl class="doc-meta row mb-0" style="min-width:320px">
                     <div class="col-6"><dt>DN No</dt><dd>{{ $note->delivery_no }}</dd></div>
-                    <div class="col-6"><dt>Status</dt><dd>{!! status_badge($note->status) !!}</dd></div>
+                    <div class="col-6"><dt>Status</dt><dd>{!! shipping_status_badge($note->status) !!}</dd></div>
                     <div class="col-6"><dt>Date</dt><dd>{{ format_date($note->date) }}</dd></div>
-                    <div class="col-6"><dt>Invoice</dt><dd>@if ($note->sale)<a href="{{ route('sales.show', $note->sale_id) }}">{{ $note->sale->invoice_no }}</a>@else Standalone @endif</dd></div>
-                    <div class="col-6"><dt>Driver</dt><dd>{{ $note->driver_name ?: '-' }}</dd></div>
+                    <div class="col-6"><dt>Invoice</dt><dd>@if ($note->sale)<a href="{{ route('sales.show', $note->sale_id) }}">{{ $note->sale->invoice_no }}</a>@if ($note->from_sale) <span class="badge badge-primary">linked</span>@endif @else Standalone @endif</dd></div>
+                    <div class="col-6"><dt>Delivery person</dt><dd>{{ $note->deliveryPerson?->name ?? ($note->driver_name ?: '-') }}</dd></div>
                     <div class="col-6"><dt>Vehicle</dt><dd>{{ $note->vehicle_no ?: '-' }}</dd></div>
                 </dl>
             </div>

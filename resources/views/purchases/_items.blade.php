@@ -64,40 +64,7 @@
             </div>
         </div>
         @if (! empty($withPayment))
-            <div class="payment-panel mb-3">
-                <div class="form-section-title">Payment to supplier</div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="payment_method">Payment method</label>
-                            <select name="payment_method" id="payment_method" class="form-control custom-select">
-                                @foreach (payment_methods(true) as $key => $label)
-                                    <option value="{{ $key }}" @selected(old('payment_method', 'credit') === $key)>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6 payment-fields">
-                        <div class="form-group">
-                            <label for="payment_amount">Amount paid</label>
-                            <div class="input-group">
-                                <input type="number" step="any" min="0" name="payment_amount" id="payment_amount" class="form-control text-right" value="{{ old('payment_amount', 0) }}">
-                                <div class="input-group-append"><button type="button" class="btn btn-teal" id="btn_pay_full">Pay full</button></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-12 payment-fields">
-                        <div class="form-group">
-                            <label for="payment_reference">Payment reference</label>
-                            <input type="text" name="payment_reference" id="payment_reference" class="form-control" value="{{ old('payment_reference') }}" placeholder="Cheque no., bank / mobile money transaction ID">
-                        </div>
-                    </div>
-                </div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <span>Balance due: <strong id="balance_text">0.00</strong></span>
-                    <span id="payment_status_preview" class="badge badge-pill badge-danger">Due</span>
-                </div>
-            </div>
+            @include('partials.payment-rows', ['title' => 'Payment to supplier', 'hint' => 'Leave the amount at 0 to record the purchase on credit. Split payments across methods by adding rows.'])
         @endif
     </div>
 </div>

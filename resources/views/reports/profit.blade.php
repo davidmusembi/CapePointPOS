@@ -29,6 +29,7 @@
                         <tr><td class="pl-3">Less: invoice discounts</td><td class="text-right pr-3 text-danger" data-summary="invoice_discount">-</td></tr>
                         <tr><td class="pl-3">Less: sales returns (net of discount)</td><td class="text-right pr-3 text-danger" data-summary="returns_net">-</td></tr>
                         <tr class="table-active"><th class="pl-3">Net sales</th><th class="text-right pr-3" data-summary="net_sales">-</th></tr>
+                        <tr><td class="pl-3">Add: shipping &amp; additional charges billed</td><td class="text-right pr-3" data-summary="other_income">-</td></tr>
                         <tr><td class="pl-3">Less: cost of goods sold</td><td class="text-right pr-3 text-danger" data-summary="cogs">-</td></tr>
                         <tr class="table-active"><th class="pl-3">Gross profit <small class="text-muted">(<span data-summary="gross_margin" data-format="raw"></span>)</small></th><th class="text-right pr-3" data-summary="gross_profit">-</th></tr>
                         <tbody id="expense_lines"></tbody>
@@ -57,11 +58,11 @@
         <div class="card-header"><h3 class="card-title">Monthly breakdown</h3></div>
         <div class="card-body">
             <table class="table table-bordered table-striped table-hover w-100" id="monthly_table">
-                <thead><tr><th>Month</th><th>Net Sales</th><th>COGS</th><th>Gross Profit</th><th>Expenses</th><th>Net Profit</th></tr></thead>
+                <thead><tr><th>Month</th><th>Net Sales</th><th>Other Income</th><th>COGS</th><th>Gross Profit</th><th>Expenses</th><th>Net Profit</th></tr></thead>
                 <tfoot>
                 <tr>
                     <th class="text-right">Total:</th>
-                    <th class="text-right" data-total="m_net_sales"></th><th class="text-right" data-total="m_cogs"></th>
+                    <th class="text-right" data-total="m_net_sales"></th><th class="text-right" data-total="m_other_income"></th><th class="text-right" data-total="m_cogs"></th>
                     <th class="text-right" data-total="m_gross_profit"></th><th class="text-right" data-total="m_expenses"></th>
                     <th class="text-right" data-total="m_net_profit"></th>
                 </tr>
@@ -108,7 +109,8 @@
 
             RPT.client('#monthly_table', url, 'monthly', [
                 { data: 'month', render: RPT.sortable },
-                { data: 'net_sales', render: RPT.money, className: r }, { data: 'cogs', render: RPT.money, className: r },
+                { data: 'net_sales', render: RPT.money, className: r }, { data: 'other_income', render: RPT.money, className: r },
+                { data: 'cogs', render: RPT.money, className: r },
                 { data: 'gross_profit', render: RPT.money, className: r }, { data: 'expenses', render: RPT.money, className: r },
                 { data: 'net_profit', render: RPT.money, className: r + ' font-weight-bold' }
             ], {

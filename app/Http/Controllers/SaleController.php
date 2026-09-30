@@ -6,6 +6,8 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\TaxRate;
+use App\Models\User;
+use App\Services\AttachmentService;
 use App\Services\SaleService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -60,6 +62,7 @@ class SaleController extends Controller implements HasMiddleware
         return $query
             ->when($request->customer_id, fn ($q, $v) => $q->where('sales.customer_id', $v))
             ->when($request->payment_status, fn ($q, $v) => $q->where('sales.payment_status', $v))
+            ->when($request->shipping_status, fn ($q, $v) => $v === 'none' ? $q->whereNull('sales.shipping_status') : $q->where('sales.shipping_status', $v))
             ->when($request->boolean('overdue'), fn ($q) => $q->where('sales.due_amount', '>', 0)
                 ->whereNotNull('sales.due_date')->where('sales.due_date', '<', now()->toDateString()))
             ->when($dueOnly, fn ($q) => $q->where('sales.due_amount', '>', 0));
@@ -88,6 +91,7 @@ class SaleController extends Controller implements HasMiddleware
             ->editColumn('returned_amount', fn ($s) => $s->returned_amount > 0 ? money($s->returned_amount) : '-')
             ->editColumn('due_amount', fn ($s) => $s->due_amount > 0 ? '<span class="text-danger font-weight-600">'.money($s->due_amount).'</span>' : money(0))
             ->editColumn('payment_status', fn ($s) => payment_status_badge($s->payment_status))
+            ->editColumn('shipping_status', fn ($s) => shipping_status_badge($s->shipping_status))
             ->editColumn('due_date', fn ($s) => $s->due_date
                 ? ($s->is_overdue ? '<span class="text-danger font-weight-600" title="Overdue">'.format_date($s->due_date).'</span>' : format_date($s->due_date))
                 : '-')
@@ -116,7 +120,7 @@ class SaleController extends Controller implements HasMiddleware
             ]))
             ->filterColumn('customer_name', fn ($q, $k) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$k}%")->orWhere('company', 'like', "%{$k}%")))
             ->with('totals', $totals)
-            ->rawColumns(['invoice_no', 'due_amount', 'payment_status', 'due_date', 'days_overdue', 'action'])
+            ->rawColumns(['invoice_no', 'due_amount', 'payment_status', 'shipping_status', 'due_date', 'days_overdue', 'action'])
             ->make(true);
     }
 
@@ -129,6 +133,7 @@ class SaleController extends Controller implements HasMiddleware
             'customer' => $customer,
             'items' => [],
             'taxRates' => $this->taxRates(),
+            'deliveryPeople' => $this->deliveryPeople(),
         ]);
     }
 
@@ -141,13 +146,14 @@ class SaleController extends Controller implements HasMiddleware
         } catch (ValidationException $e) {
             return back()->withInput()->withErrors($e->errors());
         }
+        app(AttachmentService::class)->storeMany($sale, $request->file('shipping_documents', []), 'shipping');
 
         return $this->redirectAfterSave($request, $sale, "Invoice {$sale->invoice_no} created successfully");
     }
 
     public function show(Request $request, Sale $sale)
     {
-        $sale->load(['customer', 'creator', 'items.product.unit', 'allocations.payment', 'returns', 'deliveryNotes']);
+        $sale->load(['customer', 'creator', 'items.product.unit', 'allocations.payment', 'returns', 'deliveryNotes', 'deliveryPerson', 'attachments.uploader']);
 
         return view('sales.show', compact('sale'));
     }
@@ -158,7 +164,7 @@ class SaleController extends Controller implements HasMiddleware
             return redirect()->route('sales.show', $sale)->with('error', 'This invoice has returns (credit notes) and can no longer be edited.');
         }
 
-        $sale->load(['customer', 'items.product.unit']);
+        $sale->load(['customer', 'items.product.unit', 'attachments']);
         $items = $sale->items->map(fn ($i) => [
             'id' => $i->product_id,
             'text' => $i->product->name ?? 'Deleted product',
@@ -178,6 +184,7 @@ class SaleController extends Controller implements HasMiddleware
             'customer' => $sale->customer,
             'items' => $items,
             'taxRates' => $this->taxRates(),
+            'deliveryPeople' => $this->deliveryPeople($sale->delivery_person_id),
         ]);
     }
 
@@ -190,6 +197,7 @@ class SaleController extends Controller implements HasMiddleware
         } catch (ValidationException $e) {
             return back()->withInput()->withErrors($e->errors());
         }
+        app(AttachmentService::class)->storeMany($sale, $request->file('shipping_documents', []), 'shipping');
 
         return $this->redirectAfterSave($request, $sale, "Invoice {$sale->invoice_no} updated successfully");
     }
@@ -207,7 +215,7 @@ class SaleController extends Controller implements HasMiddleware
 
     public function print(Request $request, Sale $sale)
     {
-        $sale->load(['customer', 'items.product.unit', 'allocations.payment', 'creator']);
+        $sale->load(['customer', 'items.product.unit', 'allocations.payment', 'creator', 'deliveryPerson']);
         $pdf = Pdf::loadView('pdf.invoice', compact('sale'))->setPaper('a4');
         $file = 'Invoice-'.$sale->invoice_no.'.pdf';
 
@@ -228,6 +236,13 @@ class SaleController extends Controller implements HasMiddleware
         return redirect()->route('sales.show', $params)->with('success', $message);
     }
 
+    /** Active users who can be assigned deliveries (keeps a deactivated current assignee selectable). */
+    protected function deliveryPeople(?int $current = null)
+    {
+        return User::where(fn ($q) => $q->where('is_active', true)->when($current, fn ($w) => $w->orWhere('id', $current)))
+            ->orderBy('name')->pluck('name', 'id');
+    }
+
     protected function taxRates(): array
     {
         return TaxRate::orderBy('name')->get()->map(fn ($t) => ['rate' => (float) $t->rate, 'name' => $t->name])->all();
@@ -235,7 +250,7 @@ class SaleController extends Controller implements HasMiddleware
 
     protected function validated(Request $request): array
     {
-        return $request->validate([
+        return $request->validate(\App\Services\PaymentService::rowRules() + [
             'customer_id' => ['required', 'exists:customers,id'],
             'date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:date'],
@@ -244,9 +259,6 @@ class SaleController extends Controller implements HasMiddleware
             'notes' => ['nullable', 'string', 'max:2000'],
             'discount_type' => ['nullable', 'in:fixed,percentage'],
             'discount_value' => ['nullable', 'numeric', 'min:0'],
-            'payment_method' => ['nullable', Rule::in(array_keys(payment_methods(true)))],
-            'payment_amount' => ['nullable', 'numeric', 'min:0'],
-            'payment_reference' => ['nullable', 'string', 'max:190'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'exists:products,id'],
             'items.*.description' => ['nullable', 'string', 'max:255'],
@@ -254,7 +266,20 @@ class SaleController extends Controller implements HasMiddleware
             'items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'items.*.discount_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'shipping_details' => ['nullable', 'string', 'max:2000'],
+            'shipping_address' => ['nullable', 'string', 'max:1000'],
+            'shipping_charges' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'shipping_status' => ['nullable', Rule::in(array_keys(shipping_statuses()))],
+            'delivered_to' => ['nullable', 'string', 'max:190'],
+            'delivery_person_id' => ['nullable', Rule::exists('users', 'id')],
+            'additional_charges' => ['nullable', 'array', 'max:20'],
+            'additional_charges.*.name' => ['nullable', 'string', 'max:120'],
+            'additional_charges.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'shipping_documents' => ['nullable', 'array', 'max:'.(int) config('pos.attachments.max_files', 10)],
+            'shipping_documents.*' => AttachmentService::rules(),
         ], [
+            'shipping_documents.*.mimes' => 'Shipping documents must be one of: '.implode(', ', config('pos.attachments.mimes')).'.',
+            'shipping_documents.*.max' => 'Each shipping document may not be larger than '.round(config('pos.attachments.max_kb') / 1024).' MB.',
             'items.required' => 'Add at least one product to the invoice.',
         ]);
     }

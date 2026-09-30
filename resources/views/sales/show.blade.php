@@ -110,6 +110,10 @@
                             <tr><td>Discount @if ($sale->discount_type === 'percentage')({{ (float) $sale->discount_value }}%)@endif</td><td class="text-right">- {{ money($sale->discount_amount) }}</td></tr>
                         @endif
                         <tr><td>{{ settings('tax_label', 'Tax') }}</td><td class="text-right">{{ money($sale->tax_amount) }}</td></tr>
+                        @if ($sale->shipping_charges > 0)<tr><td>Shipping charges</td><td class="text-right">{{ money($sale->shipping_charges) }}</td></tr>@endif
+                        @foreach ($sale->additional_charges ?? [] as $charge)
+                            <tr><td>{{ $charge['name'] }}</td><td class="text-right">{{ money($charge['amount']) }}</td></tr>
+                        @endforeach
                         <tr class="grand"><td>Total</td><td class="text-right">{{ money($sale->total) }}</td></tr>
                         @if ($sale->returned_amount > 0)
                             <tr><td>Returned (credit notes)</td><td class="text-right">- {{ money($sale->returned_amount) }}</td></tr>
@@ -121,6 +125,34 @@
             </div>
         </div>
     </div>
+
+    @if ($sale->shipping_status || $sale->shipping_address || $sale->attachments->isNotEmpty())
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-shipping-fast mr-1 text-teal"></i> Shipping</h3>
+                <div class="card-tools">{!! shipping_status_badge($sale->shipping_status) !!}</div>
+            </div>
+            <div class="card-body">
+                <div class="row doc-meta">
+                    <div class="col-md-4"><dl><dt>Shipping address</dt><dd>{!! nl2br(e($sale->shipping_address ?: '-')) !!}</dd></dl></div>
+                    <div class="col-md-4"><dl><dt>Shipping details</dt><dd>{!! nl2br(e($sale->shipping_details ?: '-')) !!}</dd></dl></div>
+                    <div class="col-md-2"><dl><dt>Delivered to</dt><dd>{{ $sale->delivered_to ?: '-' }}</dd></dl></div>
+                    <div class="col-md-2"><dl><dt>Delivery person</dt><dd>{{ $sale->deliveryPerson?->name ?? '-' }}</dd></dl></div>
+                    @if ($sale->attachments->isNotEmpty())
+                        <div class="col-md-12">
+                            <dl class="mb-0"><dt>Shipping documents</dt>
+                                <dd class="mb-0">
+                                    @foreach ($sale->attachments as $file)
+                                        <a href="{{ route('attachments.download', $file) }}" class="btn btn-xs btn-default mr-1 mb-1"><i class="{{ $file->icon }} mr-1"></i>{{ $file->original_name }} <span class="text-muted">({{ $file->size_label }})</span></a>
+                                    @endforeach
+                                </dd>
+                            </dl>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div class="row">
         <div class="col-lg-6">
@@ -190,8 +222,8 @@
                             <tr>
                                 <td class="pl-3"><a href="{{ route('delivery-notes.show', $dn) }}">{{ $dn->delivery_no }}</a></td>
                                 <td>{{ format_date($dn->date) }}</td>
-                                <td>{{ collect([$dn->driver_name, $dn->vehicle_no])->filter()->implode(' / ') ?: '-' }}</td>
-                                <td class="pr-3">{!! status_badge($dn->status) !!}</td>
+                                <td>{{ collect([$dn->deliveryPerson?->name ?? $dn->driver_name, $dn->vehicle_no])->filter()->implode(' / ') ?: '-' }}</td>
+                                <td class="pr-3">{!! shipping_status_badge($dn->status) !!} @if ($dn->from_sale)<span class="badge badge-primary">linked</span>@endif</td>
                             </tr>
                         @empty
                             <tr><td colspan="4" class="text-center text-muted py-3">No delivery notes</td></tr>

@@ -99,6 +99,30 @@ return [
         'card' => 'Card',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Shipping / delivery statuses - shared by sales invoices and delivery notes.
+    | 'tone' is the badge colour. The first status is the default for new notes.
+    |--------------------------------------------------------------------------
+    */
+    'shipping_statuses' => [
+        'ordered' => ['label' => 'Ordered', 'tone' => 'secondary'],
+        'packed' => ['label' => 'Packed', 'tone' => 'info'],
+        'shipped' => ['label' => 'Shipped', 'tone' => 'primary'],
+        'delivered' => ['label' => 'Delivered', 'tone' => 'success'],
+        'cancelled' => ['label' => 'Cancelled', 'tone' => 'dark'],
+    ],
+
+    // Uploaded documents (shipping documents etc.). Stored on the private "local" disk.
+    'attachments' => [
+        'mimes' => ['pdf', 'csv', 'zip', 'doc', 'docx', 'jpeg', 'jpg', 'png'],
+        'max_kb' => 5120,
+        'max_files' => 10,
+    ],
+
+    // Number of "additional expense" rows shown on the sales invoice form.
+    'additional_charge_rows' => 4,
+
     // Default stock adjustment reasons (overridable in Business Settings).
     'stock_adjustment_reasons' => [
         'Damaged goods', 'Expired stock', 'Stock count variance', 'Theft / loss',

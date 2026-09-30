@@ -14,6 +14,23 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind a reverse proxy the request arrives over plain HTTP on the
+        // loopback, so without this Laravel reads every request as insecure:
+        // it would build http:// URLs, drop the HSTS header in SecurityHeaders
+        // (which is gated on $request->isSecure()), and refuse to send the
+        // session cookie once SESSION_SECURE_COOKIE is on.
+        //
+        // Trusting all proxies is safe here only because the app listens on
+        // loopback: the host nginx is the single thing that can reach it, and
+        // it overwrites X-Forwarded-* on every request.
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,

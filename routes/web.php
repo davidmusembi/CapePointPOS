@@ -48,6 +48,10 @@ Route::middleware(['auth', 'active'])->group(function () {
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::post('notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
+    // Attached documents (authorised per owning record inside the controller)
+    Route::get('attachments/{attachment}/download', [\App\Http\Controllers\AttachmentController::class, 'download'])->name('attachments.download');
+    Route::delete('attachments/{attachment}', [\App\Http\Controllers\AttachmentController::class, 'destroy'])->name('attachments.destroy');
+
     Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
 

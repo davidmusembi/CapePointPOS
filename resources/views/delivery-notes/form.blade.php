@@ -25,6 +25,12 @@
         @if ($editing) @method('PUT') @endif
         @if ($sale)<input type="hidden" name="sale_id" value="{{ $sale->id }}">@endif
 
+        @if ($note->from_sale)
+            <div class="alert alert-light border"><i class="fas fa-link text-primary mr-1"></i>
+                This delivery note is linked to invoice <strong>{{ $sale?->invoice_no }}</strong>. Its items follow the invoice;
+                changes to the address, recipient, delivery person and status here are copied back to the invoice's shipping details.
+            </div>
+        @endif
         @unless ($sale)
             <div class="alert alert-light border"><i class="fas fa-info-circle text-primary mr-1"></i>
                 Delivery notes do not change stock. Stock is deducted by the sales invoice; a standalone delivery note is only a dispatch document.
@@ -58,7 +64,7 @@
                         <div class="form-group">
                             <label class="required" for="status">Status</label>
                             <select name="status" id="status" class="form-control custom-select">
-                                @foreach (\App\Models\DeliveryNote::STATUSES as $key => $label)
+                                @foreach (\App\Models\DeliveryNote::statuses() as $key => $label)
                                     <option value="{{ $key }}" @selected(old('status', $note->status) === $key)>{{ $label }}</option>
                                 @endforeach
                             </select>
@@ -67,7 +73,7 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="delivery_address">Delivery address</label>
-                            <input type="text" name="delivery_address" id="delivery_address" class="form-control" value="{{ old('delivery_address', $note->delivery_address) }}">
+                            <textarea name="delivery_address" id="delivery_address" rows="1" class="form-control" maxlength="1000">{{ old('delivery_address', $note->delivery_address) }}</textarea>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -84,8 +90,19 @@
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="driver_name">Driver</label>
-                            <input type="text" name="driver_name" id="driver_name" class="form-control" value="{{ old('driver_name', $note->driver_name) }}">
+                            <label for="delivery_person_id">Delivery person</label>
+                            <select name="delivery_person_id" id="delivery_person_id" class="form-control select2" data-allow-clear="true" data-placeholder="Select staff member">
+                                <option value=""></option>
+                                @foreach ($deliveryPeople as $id => $name)
+                                    <option value="{{ $id }}" @selected(old('delivery_person_id', $note->delivery_person_id) == $id)>{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="driver_name">Driver (if not a staff member)</label>
+                            <input type="text" name="driver_name" id="driver_name" class="form-control" value="{{ old('driver_name', $note->delivery_person_id ? '' : $note->driver_name) }}">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -98,8 +115,8 @@
             </div>
         </div>
 
-        <div class="card card-teal card-outline">
-            <div class="card-header"><h3 class="card-title">Items</h3></div>
+        <div class="card card-teal card-outline" @if ($note->from_sale) data-locked="1" @endif>
+            <div class="card-header"><h3 class="card-title">Items @if ($note->from_sale)<small class="text-muted">(from the invoice - edit the invoice to change)</small>@endif</h3></div>
             <div class="card-body">
                 <div class="row justify-content-center mb-3">
                     <div class="col-md-8 product-search-wrap">
@@ -133,6 +150,14 @@
 @push('scripts')
 <script>
     $(function () {
+        // Items of an invoice-linked note follow the invoice: show them read-only.
+        if ($('[data-locked="1"]').length) {
+            setTimeout(function () {
+                $('#dn_product_search').closest('.row').hide();
+                $('#dn_items .remove-row, #dn_items .fa-times-circle').hide();
+                $('#dn_items input').prop('readonly', true);
+            }, 0);
+        }
         var idx = 0;
         function renumber() {
             var $rows = $('#dn_items tbody tr.item-row');

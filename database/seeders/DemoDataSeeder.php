@@ -337,7 +337,7 @@ class DemoDataSeeder extends Seeder
                 'contact_phone' => $sale->customer->phone,
                 'vehicle_no' => 'KD'.chr(65 + $k).' '.mt_rand(100, 999).chr(65 + ($k * 3) % 26),
                 'driver_name' => ['Moses Ouma', 'Ibrahim Ali', 'Stephen Kiptoo'][$k % 3],
-                'status' => ['delivered', 'delivered', 'dispatched', 'pending'][$k % 4],
+                'status' => ['delivered', 'delivered', 'shipped', 'ordered'][$k % 4],
             ]);
             foreach ($sale->items as $it) {
                 $note->items()->create(['product_id' => $it->product_id, 'description' => $it->description, 'quantity' => $it->quantity]);

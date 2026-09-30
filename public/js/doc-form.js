@@ -123,7 +123,16 @@
             r.$r.find('.line-disc-amount').text(totalDisc > 0 ? '- ' + APP.formatNumber(totalDisc) : '');
         });
         tax = APP.round(tax);
-        var total = APP.round(subtotal - discount + tax);
+
+        // Shipping + additional charges (sales invoice only) are added after tax, like SaleService.
+        var shipping = APP.round(Math.max(0, parseFloat($('#shipping_charges').val()) || 0));
+        var extra = 0;
+        $('.additional-charge-amount').each(function () { extra += Math.max(0, parseFloat($(this).val()) || 0); });
+        extra = APP.round(extra);
+        $('#shipping_text').text(APP.formatMoney(shipping));
+        $('#charges_text').text(APP.formatMoney(extra));
+
+        var total = APP.round(subtotal - discount + tax + shipping + extra);
 
         $('#subtotal_text').text(APP.formatMoney(subtotal));
         $('#tax_text').text(APP.formatMoney(tax));
@@ -132,11 +141,13 @@
         $('#item_count').text(n);
         DocForm.total = total;
 
-        // payment panel
-        if ($('#payment_amount').length) {
-            var method = $('#payment_method').val();
-            var paid = method === 'credit' ? 0 : Math.max(0, parseFloat($('#payment_amount').val()) || 0);
+        // payment rows (split payments)
+        if ($('#payment_rows').length) {
+            var paid = 0;
+            $('#payment_rows .pay-amount').each(function () { paid += Math.max(0, parseFloat($(this).val()) || 0); });
+            paid = APP.round(paid);
             var balance = APP.round(total - paid);
+            $('#paying_text').text(APP.formatMoney(paid)).toggleClass('text-danger', paid - total > 0.009);
             $('#balance_text').text(APP.formatMoney(balance)).toggleClass('text-danger', balance > 0).toggleClass('text-success', balance <= 0);
             var status = paid <= 0 ? 'Due' : (balance <= 0 ? 'Paid' : 'Partial');
             var cls = paid <= 0 ? 'danger' : (balance <= 0 ? 'success' : 'warning');
@@ -168,20 +179,8 @@
             $search.val(null).trigger('change');
         });
 
-        $(document).on('input change', '#items_table .qty, #items_table .price, #items_table .disc, #items_table .tax, #discount_type, #discount_value, #payment_amount, #payment_method', DocForm.recalc);
+        $(document).on('input change', '#items_table .qty, #items_table .price, #items_table .disc, #items_table .tax, #discount_type, #discount_value, #payment_rows .pay-amount, #shipping_charges, .additional-charge-amount', DocForm.recalc);
         $(document).on('click', '#items_table .remove-row', function () { $(this).closest('tr').remove(); DocForm.recalc(); });
-
-        $('#payment_method').on('change', function () {
-            var credit = $(this).val() === 'credit';
-            $('.payment-fields').toggle(!credit);
-            if (credit) { $('#payment_amount').val(0); }
-            DocForm.recalc();
-        }).trigger('change');
-
-        $('#btn_pay_full').on('click', function () {
-            if ($('#payment_method').val() === 'credit') { $('#payment_method').val('cash').trigger('change'); }
-            $('#payment_amount').val(APP.round(DocForm.total)).trigger('input');
-        });
 
         $.each(opts.items, function (i, it) { it.silent = true; it.force_new = true; DocForm.addRow(it); });
         DocForm.recalc();

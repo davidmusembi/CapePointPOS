@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
  *
  * Net sales  = Σ sales (subtotal − invoice discount) − Σ returns (subtotal − discount)      [excl. tax]
  * COGS       = Σ sale lines qty × unit_cost − Σ returned lines qty × unit_cost              [returns by return date]
- * Gross      = Net sales − COGS
+ * Other inc. = Σ sales shipping + additional charges
+ * Gross      = Net sales + other income − COGS
  * Net profit = Gross − expenses
  */
 class ProfitService
@@ -23,7 +24,8 @@ class ProfitService
     public function summary(string $start, string $end): array
     {
         $s = Sale::whereBetween('date', [$start, $end])->toBase()->selectRaw('COUNT(*) cnt, COALESCE(SUM(subtotal),0) subtotal,
-            COALESCE(SUM(discount_amount),0) discount, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(total),0) total')->first();
+            COALESCE(SUM(discount_amount),0) discount, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(total),0) total,
+            COALESCE(SUM(shipping_charges + additional_charges_total),0) charges')->first();
         $r = SaleReturn::whereBetween('date', [$start, $end])->toBase()->selectRaw('COUNT(*) cnt, COALESCE(SUM(subtotal),0) subtotal,
             COALESCE(SUM(discount_amount),0) discount, COALESCE(SUM(tax_amount),0) tax, COALESCE(SUM(total),0) total')->first();
 
@@ -32,7 +34,9 @@ class ProfitService
         $netSales = round($salesNet - $returnsNet, 2);
         $cogs = round($this->salesCogs($start, $end) - $this->returnsCogs($start, $end), 2);
         $expenses = round((float) Expense::whereBetween('date', [$start, $end])->sum('amount'), 2);
-        $gross = round($netSales - $cogs, 2);
+        // Shipping & additional charges billed to customers are income outside product sales (not taxed, never returned).
+        $otherIncome = round((float) $s->charges, 2);
+        $gross = round($netSales + $otherIncome - $cogs, 2);
 
         $inputTax = (float) Purchase::whereBetween('date', [$start, $end])->sum('tax_amount')
             - (float) PurchaseReturn::whereBetween('date', [$start, $end])->sum('tax_amount');
@@ -46,6 +50,7 @@ class ProfitService
             'returns_net' => round($returnsNet, 2),
             'returns_total' => round((float) $r->total, 2),
             'net_sales' => $netSales,
+            'other_income' => $otherIncome,
             'cogs' => $cogs,
             'gross_profit' => $gross,
             'expenses' => $expenses,

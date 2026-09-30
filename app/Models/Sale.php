@@ -15,6 +15,8 @@ class Sale extends Model
     protected $fillable = [
         'invoice_no', 'customer_id', 'date', 'due_date', 'payment_terms', 'customer_reference', 'subtotal', 'tax_amount',
         'discount_type', 'discount_value', 'discount_amount', 'total', 'notes', 'created_by',
+        'shipping_details', 'shipping_address', 'shipping_charges', 'shipping_status', 'delivered_to',
+        'delivery_person_id', 'additional_charges', 'additional_charges_total',
     ];
 
     protected $casts = [
@@ -28,6 +30,9 @@ class Sale extends Model
         'paid_amount' => 'float',
         'returned_amount' => 'float',
         'due_amount' => 'float',
+        'shipping_charges' => 'float',
+        'additional_charges' => 'array',
+        'additional_charges_total' => 'float',
     ];
 
     public function customer()
@@ -55,6 +60,28 @@ class Sale extends Model
         return $this->belongsToMany(Payment::class, 'payment_allocations', 'payable_id', 'payment_id')
             ->wherePivot('payable_type', 'sale')
             ->withPivot('amount')->withTimestamps();
+    }
+
+    public function deliveryPerson()
+    {
+        return $this->belongsTo(User::class, 'delivery_person_id')->withTrashed();
+    }
+
+    /** Delivery note generated and kept in sync by the invoice's shipping section. */
+    public function shippingNote()
+    {
+        return $this->hasOne(DeliveryNote::class)->where('from_sale', true);
+    }
+
+    public function attachments()
+    {
+        return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    /** Shipping + additional charges billed on the invoice (outside the taxable subtotal). */
+    public function getChargesTotalAttribute(): float
+    {
+        return round((float) $this->shipping_charges + (float) $this->additional_charges_total, 2);
     }
 
     public function getReferenceAttribute(): string

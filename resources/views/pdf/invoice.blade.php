@@ -93,6 +93,14 @@
                         </table>
                     </div>
                 @endif
+                @if ($sale->shipping_address || $sale->shipping_status)
+                    <div class="box" style="margin-bottom:8px">
+                        <div class="box-title">Ship to</div>
+                        <div>{!! nl2br(e($sale->shipping_address ?: collect([$c->address, $c->city])->filter()->implode(', '))) !!}</div>
+                        @if ($sale->delivered_to)<div class="muted">Attn: {{ $sale->delivered_to }}</div>@endif
+                        @if ($sale->shipping_details)<div class="muted">{{ $sale->shipping_details }}</div>@endif
+                    </div>
+                @endif
                 @if ($sale->notes)
                     <div class="box-title">Notes</div>
                     <div style="margin-bottom:8px">{!! nl2br(e($sale->notes)) !!}</div>
@@ -105,6 +113,10 @@
                         <tr><td>Invoice discount @if ($sale->discount_type === 'percentage')({{ (float) $sale->discount_value }}%)@endif</td><td class="text-right">- {{ money($sale->discount_amount) }}</td></tr>
                     @endif
                     <tr><td>{{ $taxLabel }}</td><td class="text-right">{{ money($sale->tax_amount) }}</td></tr>
+                    @if ($sale->shipping_charges > 0)<tr><td>Shipping charges</td><td class="text-right">{{ money($sale->shipping_charges) }}</td></tr>@endif
+                    @foreach ($sale->additional_charges ?? [] as $charge)
+                        <tr><td>{{ $charge['name'] }}</td><td class="text-right">{{ money($charge['amount']) }}</td></tr>
+                    @endforeach
                     <tr class="grand"><td>Total</td><td class="text-right">{{ money($sale->total) }}</td></tr>
                     @if ($sale->returned_amount > 0)
                         <tr><td>Less: credit notes</td><td class="text-right">- {{ money($sale->returned_amount) }}</td></tr>

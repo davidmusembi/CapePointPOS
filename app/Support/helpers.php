@@ -105,9 +105,30 @@ if (! function_exists('status_badge')) {
         $map = [
             'pending' => 'secondary', 'partial' => 'warning', 'received' => 'success', 'cancelled' => 'dark',
             'dispatched' => 'info', 'delivered' => 'success', 'active' => 'success', 'inactive' => 'secondary',
+            'ordered' => 'secondary', 'packed' => 'info', 'shipped' => 'primary',
         ];
 
         return '<span class="badge badge-pill badge-'.($map[$status] ?? 'secondary').'">'.e(ucfirst((string) $status)).'</span>';
+    }
+}
+
+if (! function_exists('shipping_statuses')) {
+    /** @return array<string, string> key => label (global list in config/pos.php) */
+    function shipping_statuses(): array
+    {
+        return array_map(fn ($s) => $s['label'], config('pos.shipping_statuses', []));
+    }
+}
+
+if (! function_exists('shipping_status_badge')) {
+    function shipping_status_badge(?string $status): string
+    {
+        if (! $status) {
+            return '<span class="text-muted">-</span>';
+        }
+        $s = config("pos.shipping_statuses.$status");
+
+        return '<span class="badge badge-pill badge-'.e($s['tone'] ?? 'secondary').'">'.e($s['label'] ?? ucfirst($status)).'</span>';
     }
 }
 

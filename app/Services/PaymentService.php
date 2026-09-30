@@ -74,6 +74,80 @@ class PaymentService
         });
     }
 
+    /** Validation rules for the split-payment rows on invoice / purchase forms. */
+    public static function rowRules(): array
+    {
+        return [
+            'payments' => ['nullable', 'array', 'max:10'],
+            'payments.*.amount' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'payments.*.paid_on' => ['nullable', 'date', 'before_or_equal:'.now()->addDay()->toDateString()],
+            'payments.*.method' => ['nullable', \Illuminate\Validation\Rule::in(array_keys(payment_methods()))],
+            'payments.*.reference' => ['nullable', 'string', 'max:190'],
+            'payments.*.note' => ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    /**
+     * Payment rows captured on a document form. Accepts the split rows (payments[]) or the legacy single
+     * payment fields (payment_method / payment_amount / payment_reference). Rows without an amount are ignored.
+     *
+     * @return array<int, array{amount: float, paid_on: ?string, method: string, reference: ?string, note: ?string}>
+     */
+    public static function rowsFrom(array $data): array
+    {
+        $rows = $data['payments'] ?? null;
+        if (! is_array($rows)) {
+            $method = $data['payment_method'] ?? 'credit';
+            $rows = $method === 'credit' ? [] : [[
+                'amount' => $data['payment_amount'] ?? 0, 'method' => $method, 'reference' => $data['payment_reference'] ?? null,
+            ]];
+        }
+
+        return collect($rows)
+            ->map(fn ($r) => [
+                'amount' => round(max(0, (float) ($r['amount'] ?? 0)), 2),
+                'paid_on' => $r['paid_on'] ?? null,
+                'method' => (string) ($r['method'] ?? array_key_first(payment_methods())),
+                'reference' => $r['reference'] ?? null,
+                'note' => $r['note'] ?? null,
+            ])
+            ->filter(fn ($r) => $r['amount'] > 0)
+            ->values()->all();
+    }
+
+    /**
+     * Record the payment rows entered on a new invoice / purchase, each as its own receipt allocated to the document.
+     */
+    public function recordDocumentPayments(Sale|Purchase $document, array $data): void
+    {
+        $rows = self::rowsFrom($data);
+        if (! $rows) {
+            return;
+        }
+
+        $isSale = $document instanceof Sale;
+        $paying = round(array_sum(array_column($rows, 'amount')), 2);
+        if ($paying - $document->due_amount > 0.009) {
+            throw ValidationException::withMessages(['payments' => 'Total paid ('.money($paying).') cannot exceed the '
+                .($isSale ? 'invoice' : 'purchase').' total of '.money($document->due_amount).'.']);
+        }
+
+        foreach ($rows as $row) {
+            $this->record([
+                'party_type' => $isSale ? 'customer' : 'supplier',
+                'customer_id' => $isSale ? $document->customer_id : null,
+                'supplier_id' => $isSale ? null : $document->supplier_id,
+                'date' => $row['paid_on'] ?: $document->date->toDateString(),
+                'amount' => $row['amount'],
+                'method' => $row['method'],
+                'reference' => $row['reference'],
+                'notes' => $row['note'] ?: 'Payment on '.($isSale ? 'invoice ' : 'purchase ').$document->reference,
+                'source' => 'invoice',
+            ], [$document->id => $row['amount']]);
+            $document->refresh();
+        }
+    }
+
     public function delete(Payment $payment): void
     {
         DB::transaction(function () use ($payment) {

@@ -216,11 +216,7 @@ class PurchaseController extends Controller implements HasMiddleware
             'items.*.tax_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
         if ($creating) {
-            $rules += [
-                'payment_method' => ['required', 'in:'.implode(',', array_keys(payment_methods(true)))],
-                'payment_amount' => ['nullable', 'numeric', 'min:0'],
-                'payment_reference' => ['nullable', 'string', 'max:100'],
-            ];
+            $rules += \App\Services\PaymentService::rowRules();
         }
 
         return $request->validate($rules, ['items.required' => 'Add at least one product.']);

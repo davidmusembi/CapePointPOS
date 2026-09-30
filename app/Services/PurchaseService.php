@@ -78,23 +78,8 @@ class PurchaseService
             $this->fill($purchase, $data);
             $purchase->refreshBalances();
 
-            $method = $data['payment_method'] ?? 'credit';
-            $amount = round((float) ($data['payment_amount'] ?? 0), 2);
-            if ($method !== 'credit' && $amount > 0) {
-                if ($amount - $purchase->total > 0.009) {
-                    throw ValidationException::withMessages(['payment_amount' => 'Amount paid cannot exceed the purchase total of '.money($purchase->total).'.']);
-                }
-                $this->payments->record([
-                    'party_type' => 'supplier',
-                    'supplier_id' => $purchase->supplier_id,
-                    'date' => $purchase->date->toDateString(),
-                    'amount' => $amount,
-                    'method' => $method,
-                    'reference' => $data['payment_reference'] ?? null,
-                    'notes' => 'Payment on purchase '.$purchase->purchase_no,
-                    'source' => 'invoice',
-                ], [$purchase->id => $amount]);
-            }
+            // Split payments entered on the purchase (each becomes a supplier payment allocated to it).
+            $this->payments->recordDocumentPayments($purchase, $data);
 
             return $purchase->refreshBalances();
         });

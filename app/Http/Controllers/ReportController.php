@@ -665,7 +665,7 @@ class ReportController extends Controller
             'totals' => $this->num([
                 'invoice_count' => $p['invoice_count'],
                 'gross_sales' => $p['gross_sales'], 'invoice_discount' => $p['invoice_discount'],
-                'returns_net' => $p['returns_net'], 'net_sales' => $netSales,
+                'returns_net' => $p['returns_net'], 'net_sales' => $netSales, 'other_income' => $p['other_income'],
                 'cogs' => $cogs, 'gross_profit' => $gross, 'expenses' => $expenses, 'net_profit' => $net,
                 'output_tax' => $outputTax, 'input_tax' => $inputTax, 'net_tax' => $outputTax - $inputTax,
             ]) + [
@@ -721,6 +721,8 @@ class ReportController extends Controller
         $month = "DATE_FORMAT(date, '%Y-%m')";
         $sales = Sale::whereBetween('date', [$start, $end])->toBase()->groupByRaw($month)
             ->selectRaw("$month m, SUM(subtotal - discount_amount) v")->pluck('v', 'm');
+        $charges = Sale::whereBetween('date', [$start, $end])->toBase()->groupByRaw($month)
+            ->selectRaw("$month m, SUM(shipping_charges + additional_charges_total) v")->pluck('v', 'm');
         $returns = SaleReturn::whereBetween('date', [$start, $end])->toBase()->groupByRaw($month)
             ->selectRaw("$month m, SUM(subtotal - discount_amount) v")->pluck('v', 'm');
         $cogs = DB::table('sale_items as si')->join('sales as s', 's.id', '=', 'si.sale_id')
@@ -740,16 +742,17 @@ class ReportController extends Controller
             $net = (float) ($sales[$k] ?? 0) - (float) ($returns[$k] ?? 0);
             $c = (float) ($cogs[$k] ?? 0) - (float) ($cogsRet[$k] ?? 0);
             $e = (float) ($expenses[$k] ?? 0);
+            $o = (float) ($charges[$k] ?? 0);
             $rows->push([
                 'month' => ['display' => $cursor->format('M Y'), 'sort' => $k],
-                'net_sales' => round($net, 2), 'cogs' => round($c, 2), 'gross_profit' => round($net - $c, 2),
-                'expenses' => round($e, 2), 'net_profit' => round($net - $c - $e, 2),
+                'net_sales' => round($net, 2), 'other_income' => round($o, 2), 'cogs' => round($c, 2), 'gross_profit' => round($net + $o - $c, 2),
+                'expenses' => round($e, 2), 'net_profit' => round($net + $o - $c - $e, 2),
             ]);
             $cursor->addMonth();
         }
 
         return $this->json($rows, [
-            'm_net_sales' => $rows->sum('net_sales'), 'm_cogs' => $rows->sum('cogs'), 'm_gross_profit' => $rows->sum('gross_profit'),
+            'm_net_sales' => $rows->sum('net_sales'), 'm_other_income' => $rows->sum('other_income'), 'm_cogs' => $rows->sum('cogs'), 'm_gross_profit' => $rows->sum('gross_profit'),
             'm_expenses' => $rows->sum('expenses'), 'm_net_profit' => $rows->sum('net_profit'),
         ]);
     }

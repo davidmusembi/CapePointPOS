@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\DeliveryNote;
 use App\Models\Product;
 use App\Models\Sale;
 use App\Models\SaleReturn;
@@ -28,24 +29,8 @@ class SaleService
             $this->fill($sale, $data);
             $sale->refreshBalances();
 
-            $method = $data['payment_method'] ?? 'credit';
-            $amount = round((float) ($data['payment_amount'] ?? 0), 2);
-
-            if ($method !== 'credit' && $amount > 0) {
-                if ($amount - $sale->total > 0.009) {
-                    throw ValidationException::withMessages(['payment_amount' => 'Amount paid cannot exceed the invoice total of '.money($sale->total).'.']);
-                }
-                $this->payments->record([
-                    'party_type' => 'customer',
-                    'customer_id' => $sale->customer_id,
-                    'date' => $sale->date->toDateString(),
-                    'amount' => $amount,
-                    'method' => $method,
-                    'reference' => $data['payment_reference'] ?? null,
-                    'notes' => 'Payment on invoice '.$sale->invoice_no,
-                    'source' => 'invoice',
-                ], [$sale->id => $amount]);
-            }
+            // Split payments entered on the invoice (each becomes a receipt allocated to it).
+            $this->payments->recordDocumentPayments($sale, $data);
 
             return $sale->refreshBalances();
         });
@@ -85,6 +70,7 @@ class SaleService
         DB::transaction(function () use ($sale) {
             $this->stock->reverseFor($sale);
             $this->payments->detachFrom($sale);
+            $sale->shippingNote()->first()?->delete();
             $sale->delete();
             activity('Sale')->performedOn($sale)->log("Invoice {$sale->invoice_no} deleted");
         });
@@ -127,6 +113,22 @@ class SaleService
 
         $terms = self::resolveTerms($data['payment_terms'] ?? null, $customer->payment_terms);
 
+        // Shipping & additional charges are billed on top of the taxable total (not discounted / taxed).
+        $shipping = round(max(0, (float) ($data['shipping_charges'] ?? 0)), 2);
+        $charges = self::normaliseCharges($data['additional_charges'] ?? []);
+        $chargesTotal = round(array_sum(array_column($charges, 'amount')), 2);
+
+        $sale->fill([
+            'shipping_details' => $data['shipping_details'] ?? null,
+            'shipping_address' => $data['shipping_address'] ?? null,
+            'shipping_charges' => $shipping,
+            'shipping_status' => $data['shipping_status'] ?? null,
+            'delivered_to' => $data['delivered_to'] ?? null,
+            'delivery_person_id' => $data['delivery_person_id'] ?? null,
+            'additional_charges' => $charges ?: null,
+            'additional_charges_total' => $chargesTotal,
+        ]);
+
         $sale->fill([
             'customer_id' => $customer->id,
             'date' => $date->toDateString(),
@@ -139,7 +141,7 @@ class SaleService
             'subtotal' => $totals['subtotal'],
             'tax_amount' => $totals['tax_amount'],
             'discount_amount' => $totals['discount_amount'],
-            'total' => $totals['total'],
+            'total' => round($totals['total'] + $shipping + $chargesTotal, 2),
         ]);
         $sale->save();
 
@@ -162,6 +164,68 @@ class SaleService
             ]);
             $this->stock->move($product, -$line['quantity'], 'sale', $sale, $sale->invoice_no, $sale->date, $unitCost);
         }
+
+        $this->syncShippingNote($sale->fresh(['items', 'customer', 'deliveryPerson']));
+    }
+
+    /**
+     * Keep the invoice's delivery note in step with its shipping section:
+     * a shipping status creates / updates the note (items, address, recipient, delivery person, status);
+     * clearing the status removes the auto-generated note.
+     */
+    public function syncShippingNote(Sale $sale): void
+    {
+        $note = $sale->shippingNote()->first();
+
+        if (! $sale->shipping_status) {
+            $note?->delete();
+
+            return;
+        }
+
+        $customer = $sale->customer;
+        $note ??= new DeliveryNote([
+            'delivery_no' => ReferenceService::next('delivery_note'),
+            'sale_id' => $sale->id,
+            'from_sale' => true,
+            'date' => $sale->date->toDateString(),
+        ]);
+
+        $note->fill([
+            'customer_id' => $sale->customer_id,
+            'delivery_address' => $sale->shipping_address ?: trim(collect([$customer->address, $customer->city])->filter()->implode(', ')) ?: null,
+            'contact_person' => $sale->delivered_to ?: $customer->name,
+            'contact_phone' => $customer->phone,
+            'delivery_person_id' => $sale->delivery_person_id,
+            'driver_name' => $sale->deliveryPerson?->name,
+            'status' => $sale->shipping_status,
+            'notes' => $sale->shipping_details,
+        ])->save();
+
+        $note->items()->delete();
+        foreach ($sale->items as $item) {
+            $note->items()->create([
+                'product_id' => $item->product_id,
+                'description' => $item->description,
+                'quantity' => $item->quantity,
+            ]);
+        }
+    }
+
+    /** Clean "additional expense" rows: keep rows with an amount; unnamed rows get a generic label. */
+    public static function normaliseCharges($rows): array
+    {
+        $out = [];
+        foreach ((array) $rows as $row) {
+            $amount = round(max(0, (float) ($row['amount'] ?? 0)), 2);
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($amount <= 0) {
+                continue;
+            }
+            $out[] = ['name' => $name !== '' ? mb_substr($name, 0, 120) : 'Additional charge', 'amount' => $amount];
+        }
+
+        return $out;
     }
 
     /**

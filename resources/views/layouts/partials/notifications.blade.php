@@ -1,5 +1,5 @@
 {{-- Navbar notification bell + panel (items loaded over AJAX by APP.notifications in app.js) --}}
-@php $unreadCount = auth()->user()->unreadNotifications()->count(); @endphp
+@php $unreadCount = auth()->user()?->unreadNotifications()->count() ?? 0; @endphp
 <li class="nav-item dropdown notif-menu" id="notif_menu"
     data-url="{{ route('notifications.index') }}"
     data-read-all="{{ route('notifications.read-all') }}"
