@@ -1,0 +1,198 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Customer;
+use App\Models\DeliveryNote;
+use App\Models\Sale;
+use App\Services\ReferenceService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Yajra\DataTables\Facades\DataTables;
+
+class DeliveryNoteController extends Controller implements HasMiddleware
+{
+    public static function middleware(): array
+    {
+        return static::crudPermissions('delivery_notes', ['view' => ['print'], 'edit' => ['updateStatus']]);
+    }
+
+    public function index(Request $request)
+    {
+        if ($request->ajax()) {
+            $query = DeliveryNote::query()->select('delivery_notes.*')->with(['sale', 'customer'])
+                ->when($request->filled('start_date') && $request->filled('end_date'),
+                    fn ($q) => $q->whereBetween('delivery_notes.date', [$request->start_date, $request->end_date]))
+                ->when($request->status, fn ($q, $v) => $q->where('delivery_notes.status', $v))
+                ->when($request->customer_id, fn ($q, $v) => $q->where('delivery_notes.customer_id', $v));
+
+            return DataTables::eloquent($query)
+                ->editColumn('date', fn ($d) => format_date($d->date))
+                ->editColumn('delivery_no', fn ($d) => '<a href="'.route('delivery-notes.show', $d).'" class="font-weight-600">'.e($d->delivery_no).'</a>')
+                ->addColumn('invoice_no', fn ($d) => $d->sale ? '<a href="'.route('sales.show', $d->sale_id).'">'.e($d->sale->invoice_no).'</a>' : '<span class="text-muted">Standalone</span>')
+                ->addColumn('customer_name', fn ($d) => e($d->customer->display_name ?? '-'))
+                ->editColumn('delivery_address', fn ($d) => e($d->delivery_address ?? '-'))
+                ->addColumn('transport', fn ($d) => e(collect([$d->driver_name, $d->vehicle_no])->filter()->implode(' / ') ?: '-'))
+                ->editColumn('status', fn ($d) => status_badge($d->status))
+                ->addColumn('action', fn ($d) => $this->actions([
+                    ['label' => 'View', 'icon' => 'fas fa-eye', 'url' => route('delivery-notes.show', $d)],
+                    ['label' => 'Print', 'icon' => 'fas fa-print', 'url' => route('delivery-notes.print', $d), 'blank' => true],
+                    ['label' => 'Edit', 'icon' => 'fas fa-edit', 'url' => route('delivery-notes.edit', $d), 'can' => 'delivery_notes.edit'],
+                    '-',
+                    $d->status === 'pending' ? ['label' => 'Mark Dispatched', 'icon' => 'fas fa-truck', 'confirm' => route('delivery-notes.status', [$d, 'status' => 'dispatched']), 'can' => 'delivery_notes.edit', 'message' => 'Mark this delivery note as dispatched?'] : '-',
+                    in_array($d->status, ['pending', 'dispatched']) ? ['label' => 'Mark Delivered', 'icon' => 'fas fa-check-circle', 'confirm' => route('delivery-notes.status', [$d, 'status' => 'delivered']), 'can' => 'delivery_notes.edit', 'message' => 'Mark this delivery note as delivered?'] : '-',
+                    '-',
+                    ['label' => 'Delete', 'delete' => route('delivery-notes.destroy', $d), 'can' => 'delivery_notes.delete'],
+                ]))
+                ->filterColumn('invoice_no', fn ($q, $k) => $q->whereHas('sale', fn ($s) => $s->where('invoice_no', 'like', "%{$k}%")))
+                ->filterColumn('customer_name', fn ($q, $k) => $q->whereHas('customer', fn ($c) => $c->where('name', 'like', "%{$k}%")))
+                ->rawColumns(['delivery_no', 'invoice_no', 'status', 'action'])
+                ->make(true);
+        }
+
+        return view('delivery-notes.index');
+    }
+
+    public function create(Request $request)
+    {
+        $sale = $request->sale_id ? Sale::with(['customer', 'items.product.unit'])->find($request->sale_id) : null;
+        $note = new DeliveryNote(['date' => now(), 'status' => 'pending']);
+        $items = [];
+
+        if ($sale) {
+            $c = $sale->customer;
+            $note->fill([
+                'sale_id' => $sale->id,
+                'customer_id' => $sale->customer_id,
+                'delivery_address' => collect([$c->address, $c->city])->filter()->implode(', '),
+                'contact_person' => $c->name,
+                'contact_phone' => $c->phone,
+            ]);
+            $items = $sale->items->map(fn ($i) => $this->itemRow($i->product, $i->description, $i->quantity - $i->returned_quantity))
+                ->filter(fn ($r) => $r['quantity'] > 0)->values()->all();
+        }
+
+        return view('delivery-notes.form', [
+            'note' => $note,
+            'sale' => $sale,
+            'customer' => $sale?->customer ?? ($request->customer_id ? Customer::find($request->customer_id) : null),
+            'items' => $items,
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $data = $this->validated($request);
+
+        $note = DB::transaction(function () use ($data) {
+            $note = DeliveryNote::create(collect($data)->except('items')->all() + ['delivery_no' => ReferenceService::next('delivery_note')]);
+            $this->syncItems($note, $data['items']);
+
+            return $note;
+        });
+
+        return redirect()->route('delivery-notes.show', $note)->with('success', "Delivery note {$note->delivery_no} created successfully");
+    }
+
+    public function show(DeliveryNote $deliveryNote)
+    {
+        $deliveryNote->load(['sale', 'customer', 'items.product.unit', 'creator']);
+
+        return view('delivery-notes.show', ['note' => $deliveryNote]);
+    }
+
+    public function edit(DeliveryNote $deliveryNote)
+    {
+        $deliveryNote->load(['sale', 'customer', 'items.product.unit']);
+
+        return view('delivery-notes.form', [
+            'note' => $deliveryNote,
+            'sale' => $deliveryNote->sale,
+            'customer' => $deliveryNote->customer,
+            'items' => $deliveryNote->items->map(fn ($i) => $this->itemRow($i->product, $i->description, $i->quantity))->values()->all(),
+        ]);
+    }
+
+    public function update(Request $request, DeliveryNote $deliveryNote)
+    {
+        $data = $this->validated($request, $deliveryNote);
+
+        DB::transaction(function () use ($deliveryNote, $data) {
+            $deliveryNote->update(collect($data)->except(['items', 'sale_id'])->all());
+            $deliveryNote->items()->delete();
+            $this->syncItems($deliveryNote, $data['items']);
+        });
+
+        return redirect()->route('delivery-notes.show', $deliveryNote)->with('success', 'Delivery note updated successfully');
+    }
+
+    public function updateStatus(Request $request, DeliveryNote $deliveryNote)
+    {
+        $status = $request->validate(['status' => ['required', Rule::in(array_keys(DeliveryNote::STATUSES))]])['status'];
+        $deliveryNote->update(['status' => $status]);
+
+        return $this->success("Delivery note {$deliveryNote->delivery_no} marked as ".DeliveryNote::STATUSES[$status]);
+    }
+
+    public function destroy(DeliveryNote $deliveryNote)
+    {
+        $deliveryNote->delete();
+
+        return $this->success("Delivery note {$deliveryNote->delivery_no} deleted", route('delivery-notes.index'));
+    }
+
+    public function print(Request $request, DeliveryNote $deliveryNote)
+    {
+        $deliveryNote->load(['sale', 'customer', 'items.product.unit', 'creator']);
+        $pdf = Pdf::loadView('pdf.delivery-note', ['note' => $deliveryNote])->setPaper('a4');
+        $file = 'DeliveryNote-'.$deliveryNote->delivery_no.'.pdf';
+
+        return $request->boolean('download') ? $pdf->download($file) : $pdf->stream($file);
+    }
+
+    protected function itemRow($product, ?string $description, float $qty): array
+    {
+        return [
+            'id' => $product->id ?? null,
+            'text' => $product->name ?? 'Deleted product',
+            'sku' => $product->sku ?? '',
+            'unit' => $product->unit->short_name ?? '',
+            'description' => $description,
+            'quantity' => round($qty, 3),
+        ];
+    }
+
+    protected function syncItems(DeliveryNote $note, array $items): void
+    {
+        foreach ($items as $row) {
+            $note->items()->create([
+                'product_id' => $row['product_id'],
+                'description' => $row['description'] ?? null,
+                'quantity' => $row['quantity'],
+            ]);
+        }
+    }
+
+    protected function validated(Request $request, ?DeliveryNote $note = null): array
+    {
+        return $request->validate([
+            'sale_id' => ['nullable', 'exists:sales,id'],
+            'customer_id' => ['required', 'exists:customers,id'],
+            'date' => ['required', 'date'],
+            'delivery_address' => ['nullable', 'string', 'max:255'],
+            'contact_person' => ['nullable', 'string', 'max:190'],
+            'contact_phone' => ['nullable', 'string', 'max:50'],
+            'vehicle_no' => ['nullable', 'string', 'max:30'],
+            'driver_name' => ['nullable', 'string', 'max:190'],
+            'status' => ['required', Rule::in(array_keys(DeliveryNote::STATUSES))],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'exists:products,id'],
+            'items.*.description' => ['nullable', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'numeric', 'gt:0'],
+        ], ['items.required' => 'Add at least one item to the delivery note.']);
+    }
+}
